@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { getLocationByAddress, ApiError } from '@/lib/api';
 import { LocationData } from '@/types/weather';
 
@@ -15,6 +15,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
   const [showRecentSearches, setShowRecentSearches] = useState(false);
   const recentSearchesRef = useRef<HTMLDivElement>(null);
   const recentButtonRef = useRef<HTMLButtonElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,13 +49,16 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
   const handleSelectRecentSearch = (term: string) => {
     setAddress(term);
     setTimeout(() => {
-      handleSearch({ preventDefault: () => {} } as React.FormEvent);
-    }, 0);
+      if (formRef.current) {
+        const event = new Event('submit', { cancelable: true });
+        formRef.current.dispatchEvent(event);
+      }
+    }, 10);
     setShowRecentSearches(false);
   };
 
   // 添加点击外部关闭最近搜索下拉菜单
-  React.useEffect(() => {
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         recentSearchesRef.current && 
@@ -72,13 +76,30 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
     };
   }, []);
 
-  const toggleRecentSearches = () => {
+  // 当按钮被点击时切换下拉菜单
+  const toggleRecentSearches = (e: React.MouseEvent) => {
+    e.preventDefault(); // 防止表单提交
+    e.stopPropagation(); // 防止事件冒泡
     setShowRecentSearches(!showRecentSearches);
   };
 
+  // 按ESC键关闭下拉菜单
+  useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showRecentSearches) {
+        setShowRecentSearches(false);
+      }
+    };
+    
+    document.addEventListener('keydown', handleEscKey);
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [showRecentSearches]);
+
   return (
     <div className="w-full">
-      <form onSubmit={handleSearch} className="flex flex-col gap-2">
+      <form ref={formRef} onSubmit={handleSearch} className="flex flex-col gap-2">
         <div className="relative flex">
           <div className="flex-grow relative">
             <input
@@ -107,7 +128,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
               style={{ 
                 borderColor: 'var(--search-border)', 
                 background: 'var(--card-background)',
-                color: 'var(--foreground)'
+                color: showRecentSearches ? 'var(--tab-active)' : 'var(--foreground)'
               }}
               disabled={isLoading}
             >
@@ -130,7 +151,11 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
             <div 
               ref={recentSearchesRef}
               className="absolute top-full mt-1 right-0 w-48 rounded-md border shadow-lg z-10"
-              style={{ background: 'var(--card-background)', border: '1px solid var(--search-border)' }}
+              style={{ 
+                background: 'var(--card-background)', 
+                border: '1px solid var(--search-border)',
+                animation: 'fadeIn 0.2s ease-in-out'
+              }}
             >
               <div className="py-1">
                 <div className="px-3 py-2 text-xs font-medium" style={{ color: 'var(--tab-inactive)' }}>
@@ -180,6 +205,13 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
           </div>
         )}
       </form>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-5px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 };
