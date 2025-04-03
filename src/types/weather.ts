@@ -22,6 +22,8 @@ export interface WeatherData {
   windDirection: {
     value: number;
     unit: string;
+    cardinal?: string;
+    text?: string;
   };
   uvIndex: {
     value: number;
@@ -41,6 +43,7 @@ export interface WeatherData {
   precipitationProbability: {
     value: number;
     unit: string;
+    type?: string;
   };
 }
 
@@ -49,6 +52,8 @@ export interface CurrentWeather extends WeatherData {
   weatherCondition: {
     text: string;
     icon: string;
+    type?: string;
+    typeText?: string;
   };
 }
 
@@ -59,6 +64,8 @@ export interface HourlyForecast {
     weatherCondition: {
       text: string;
       icon: string;
+      type?: string;
+      typeText?: string;
     };
   }[];
 }
@@ -71,6 +78,8 @@ export interface DailyForecast {
     weatherCondition: {
       text: string;
       icon: string;
+      type?: string;
+      typeText?: string;
     };
     temperatureHigh: {
       value: number;
@@ -83,6 +92,7 @@ export interface DailyForecast {
     precipitationProbability: {
       value: number;
       unit: string;
+      type?: string;
     };
     precipitationAmount: {
       value: number;
@@ -94,6 +104,12 @@ export interface DailyForecast {
     windSpeed: {
       value: number;
       unit: string;
+    };
+    windDirection?: {
+      value: number;
+      unit: string;
+      cardinal?: string;
+      text?: string;
     };
     humidity: {
       value: number;
@@ -109,6 +125,8 @@ export interface HourlyHistory {
     weatherCondition: {
       text: string;
       icon: string;
+      type?: string;
+      typeText?: string;
     };
   }[];
 }

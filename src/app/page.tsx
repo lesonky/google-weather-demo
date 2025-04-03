@@ -20,9 +20,14 @@ import {
   ForecastResponse,
   HourlyForecastResponse,
   HourlyHistoryResponse,
-  ApiError
+  ApiError,
+  WeatherCondition
 } from '@/lib/api';
 import React from 'react';
+import {
+  getWeatherTypeText,
+  getWindDirectionText 
+} from '@/lib/weatherUtils';
 
 // 动态导入地图组件，避免SSR问题
 const WeatherMap = dynamic(() => import('@/components/WeatherMap'), {
@@ -39,60 +44,6 @@ const CurrentWeather = dynamic(() => import('@/components/CurrentWeather'));
 const HourlyForecast = dynamic(() => import('@/components/HourlyForecast'));
 const DailyForecast = dynamic(() => import('@/components/DailyForecast'));
 const HourlyHistory = dynamic(() => import('@/components/HourlyHistory'));
-
-// 定义中间数据转换接口
-interface HourDataItem {
-  time: string;
-  weatherData: {
-    temperature: {
-      value: number;
-      unit: string;
-    };
-    apparentTemperature: {
-      value: number;
-      unit: string;
-    };
-    humidity: {
-      value: number;
-      unit: string;
-    };
-    dewPoint: {
-      value: number;
-      unit: string;
-    };
-    windSpeed: {
-      value: number;
-      unit: string;
-    };
-    windDirection: {
-      value: number;
-      unit: string;
-    };
-    uvIndex: {
-      value: number;
-    };
-    visibility: {
-      value: number;
-      unit: string;
-    };
-    pressure: {
-      value: number;
-      unit: string;
-    };
-    cloudCover: {
-      value: number;
-      unit: string;
-    };
-    precipitationProbability: {
-      value: number;
-      unit: string;
-    };
-  };
-  weatherCondition: {
-    text: string;
-    icon: string;
-  };
-}
 
 // 生成完整的图标URL
 const generateIconUrl = (iconBaseUri: string, isDarkMode: boolean = false): string => {
@@ -136,8 +87,45 @@ const generateIconUrl = (iconBaseUri: string, isDarkMode: boolean = false): stri
   return `${baseUri}${themeSuffix}${extension}`;
 };
 
+// 从API响应中提取实际的天气类型
+const extractWeatherType = (weatherCondition: WeatherCondition): string => {
+  // API 响应中天气类型的位置可能有所不同
+  // 首先尝试 weatherCondition.type
+  if (weatherCondition?.type) {
+    return weatherCondition.type;
+  }
+  
+  // 如果找不到明确的type字段，尝试从其他字段推断
+  if (weatherCondition?.description?.text) {
+    const text = weatherCondition.description.text.toUpperCase();
+    
+    // 基于描述文本推断天气类型
+    if (text.includes('晴')) return 'CLEAR';
+    if (text.includes('多云') && text.includes('局部')) return 'PARTLY_CLOUDY';
+    if (text.includes('多云') && text.includes('大部')) return 'MOSTLY_CLOUDY';
+    if (text.includes('阴')) return 'CLOUDY';
+    if (text.includes('小雨')) return 'LIGHT_RAIN';
+    if (text.includes('中雨')) return 'RAIN';
+    if (text.includes('大雨')) return 'HEAVY_RAIN';
+    if (text.includes('雷雨') || text.includes('雷电')) return 'THUNDERSTORM';
+    if (text.includes('小雪')) return 'LIGHT_SNOW';
+    if (text.includes('中雪')) return 'SNOW';
+    if (text.includes('大雪')) return 'HEAVY_SNOW';
+    if (text.includes('雨夹雪')) return 'RAIN_AND_SNOW';
+    if (text.includes('阵雨')) return 'RAIN_SHOWERS';
+    if (text.includes('阵雪')) return 'SNOW_SHOWERS';
+    if (text.includes('大风')) return 'WINDY';
+  }
+  
+  // 如果无法确定，返回默认值
+  return 'TYPE_UNSPECIFIED';
+};
+
 // 转换API返回的数据格式为组件需要的格式
 const convertCurrentWeather = (data: ApiCurrentWeather, isDarkMode: boolean = false): CurrentWeatherType => {
+  // 获取实际的天气类型
+  const weatherType = extractWeatherType(data.weatherCondition);
+  
   return {
     observationTime: data.currentTime,
     temperature: {
@@ -163,6 +151,8 @@ const convertCurrentWeather = (data: ApiCurrentWeather, isDarkMode: boolean = fa
     windDirection: {
       value: data.wind.direction.degrees,
       unit: 'degrees',
+      cardinal: data.wind.direction.cardinal,
+      text: getWindDirectionText(data.wind.direction.cardinal),
     },
     uvIndex: {
       value: data.uvIndex,
@@ -182,36 +172,24 @@ const convertCurrentWeather = (data: ApiCurrentWeather, isDarkMode: boolean = fa
     precipitationProbability: {
       value: data.precipitation.probability.percent,
       unit: '%',
+      type: data.precipitation.probability.type,
     },
     weatherCondition: {
       text: data.weatherCondition.description.text,
       icon: generateIconUrl(data.weatherCondition.iconBaseUri, isDarkMode),
+      type: weatherType,
+      typeText: getWeatherTypeText(weatherType),
     },
   };
 };
 
 const convertHourlyForecast = (data: HourlyForecastResponse, isDarkMode: boolean = false): HourlyForecastType => {
-  // 初始化结果数组
-  const hourlyData: HourDataItem[] = [];
-  
-  // 检查data和data.forecastHours是否存在
-  if (!data || !data.forecastHours || !Array.isArray(data.forecastHours)) {
-    console.log('无效的每小时天气预报数据:', data);
-    return { hours: [] }; // 返回空数组
-  }
-  
-  // 直接使用forecastHours数组
-  for (const hour of data.forecastHours) {
-    // 检查必要的属性是否存在
-    if (!hour.interval || !hour.interval.startTime) {
-      continue;
-    }
-
-    // 获取时间
-    const timeStr = hour.interval.startTime;
+  const hourlyData = data.forecastHours.map(hour => {
+    // 获取真实的天气类型
+    const weatherType = extractWeatherType(hour.weatherCondition);
     
-    hourlyData.push({
-      time: timeStr,
+    return {
+      time: hour.interval.startTime,
       weatherData: {
         temperature: {
           value: hour.temperature.degrees,
@@ -236,6 +214,8 @@ const convertHourlyForecast = (data: HourlyForecastResponse, isDarkMode: boolean
         windDirection: {
           value: hour.wind.direction.degrees,
           unit: 'degrees',
+          cardinal: hour.wind.direction.cardinal,
+          text: getWindDirectionText(hour.wind.direction.cardinal),
         },
         uvIndex: {
           value: hour.uvIndex,
@@ -255,14 +235,17 @@ const convertHourlyForecast = (data: HourlyForecastResponse, isDarkMode: boolean
         precipitationProbability: {
           value: hour.precipitation.probability.percent,
           unit: '%',
+          type: hour.precipitation.probability.type,
         },
       },
       weatherCondition: {
         text: hour.weatherCondition.description.text,
         icon: generateIconUrl(hour.weatherCondition.iconBaseUri, isDarkMode),
+        type: weatherType,
+        typeText: getWeatherTypeText(weatherType),
       },
-    });
-  }
+    };
+  });
   
   return {
     hours: hourlyData
@@ -272,6 +255,9 @@ const convertHourlyForecast = (data: HourlyForecastResponse, isDarkMode: boolean
 const convertDailyForecast = (data: ForecastResponse, isDarkMode: boolean = false): DailyForecastType => {
   return {
     days: data.forecastDays.map(day => {
+      // 获取白天天气类型
+      const dayWeatherType = extractWeatherType(day.daytimeForecast.weatherCondition);
+      
       return {
         date: `${day.displayDate.year}-${day.displayDate.month}-${day.displayDate.day}`,
         sunrise: day.sunEvents.sunriseTime,
@@ -279,6 +265,8 @@ const convertDailyForecast = (data: ForecastResponse, isDarkMode: boolean = fals
         weatherCondition: {
           text: day.daytimeForecast.weatherCondition.description.text,
           icon: generateIconUrl(day.daytimeForecast.weatherCondition.iconBaseUri, isDarkMode),
+          type: dayWeatherType,
+          typeText: getWeatherTypeText(dayWeatherType),
         },
         temperatureHigh: {
           value: day.maxTemperature.degrees,
@@ -291,6 +279,7 @@ const convertDailyForecast = (data: ForecastResponse, isDarkMode: boolean = fals
         precipitationProbability: {
           value: day.daytimeForecast.precipitation.probability.percent,
           unit: '%',
+          type: day.daytimeForecast.precipitation.probability.type,
         },
         precipitationAmount: {
           value: day.daytimeForecast.precipitation.qpf.quantity,
@@ -306,6 +295,12 @@ const convertDailyForecast = (data: ForecastResponse, isDarkMode: boolean = fals
         humidity: {
           value: day.daytimeForecast.relativeHumidity,
           unit: '%',
+        },
+        windDirection: {
+          value: day.daytimeForecast.wind.direction.degrees,
+          unit: 'degrees',
+          cardinal: day.daytimeForecast.wind.direction.cardinal,
+          text: getWindDirectionText(day.daytimeForecast.wind.direction.cardinal),
         },
       };
     }),
@@ -341,6 +336,8 @@ const convertHourlyHistory = (data: HourlyHistoryResponse, isDarkMode: boolean =
           windDirection: {
             value: hour.wind.direction.degrees,
             unit: 'degrees',
+            cardinal: hour.wind.direction.cardinal,
+            text: getWindDirectionText(hour.wind.direction.cardinal),
           },
           uvIndex: {
             value: hour.uvIndex,
@@ -360,11 +357,14 @@ const convertHourlyHistory = (data: HourlyHistoryResponse, isDarkMode: boolean =
           precipitationProbability: {
             value: hour.precipitation.probability.percent,
             unit: '%',
+            type: hour.precipitation.probability.type,
           },
         },
         weatherCondition: {
           text: hour.weatherCondition.description.text,
           icon: generateIconUrl(hour.weatherCondition.iconBaseUri, isDarkMode),
+          type: hour.weatherCondition.type,
+          typeText: getWeatherTypeText(hour.weatherCondition.type),
         },
       };
     }),
@@ -712,7 +712,7 @@ export default function Home() {
                 >
                   {/* 添加小三角形指示器 */}
                   <div 
-                    className="absolute right-4 -top-2 w-4 h-4 rotate-45 transform"
+                    className="h-4 transform -top-2 right-4 w-4 rotate-45 absolute"
                     style={{ background: 'var(--card-background)' }}
                   ></div>
                   
@@ -731,7 +731,7 @@ export default function Home() {
                       }}
                     >
                       <div className="flex items-center">
-                        <svg className="h-4 w-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="h-4 mr-3 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
                         </svg>
                         跟随系统
@@ -751,7 +751,7 @@ export default function Home() {
                       }}
                     >
                       <div className="flex items-center">
-                        <svg className="h-4 w-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="h-4 mr-3 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                         </svg>
                         亮色模式
@@ -771,7 +771,7 @@ export default function Home() {
                       }}
                     >
                       <div className="flex items-center">
-                        <svg className="h-4 w-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="h-4 mr-3 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                         </svg>
                         暗色模式

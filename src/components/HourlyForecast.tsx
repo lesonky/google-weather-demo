@@ -12,6 +12,7 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { HourlyForecast as HourlyForecastType } from '@/types/weather';
+import { getWeatherTypeColor, getPrecipitationDescription } from '@/lib/weatherUtils';
 
 // 注册Chart.js组件
 ChartJS.register(
@@ -121,6 +122,21 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
       }
     }
   };
+
+  // 获取降水概率对应的样式
+  const getPrecipitationStyle = (probability: number) => {
+    if (probability < 20) {
+      return '';
+    } else if (probability < 40) {
+      return 'text-blue-500';
+    } else if (probability < 60) {
+      return 'text-blue-600';
+    } else if (probability < 80) {
+      return 'text-blue-700 font-medium';
+    } else {
+      return 'text-blue-800 font-bold';
+    }
+  };
   
   if (isLoading) {
     return (
@@ -167,26 +183,43 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
       <div className="mt-6 overflow-x-auto">
         <div className="inline-flex gap-4 pb-2">
           {data && data.hours && data.hours.length > 0 ? (
-            data.hours.slice(0, 24).map((hour, index) => (
-              <div key={index} className="flex flex-col items-center min-w-16">
-                <span className="text-sm font-medium">
-                  {formatTime(hour.time)}
-                </span>
-                {hour.weatherCondition && (
-                  <img 
-                    src={hour.weatherCondition.icon} 
-                    alt={hour.weatherCondition.text} 
-                    className="w-10 h-10 my-1"
-                  />
-                )}
-                <span className="font-bold">
-                  {hour.weatherData.temperature.value}°
-                </span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {hour.weatherData.precipitationProbability.value}%
-                </span>
-              </div>
-            ))
+            data.hours.slice(0, 24).map((hour, index) => {
+              const weatherType = hour.weatherCondition.type || '';
+              const precipProbability = hour.weatherData.precipitationProbability.value;
+              return (
+                <div key={index} className="flex flex-col items-center min-w-16">
+                  <span className="text-sm font-medium">
+                    {formatTime(hour.time)}
+                  </span>
+                  {hour.weatherCondition && (
+                    <div className="my-1 flex flex-col items-center">
+                      <img 
+                        src={hour.weatherCondition.icon} 
+                        alt={hour.weatherCondition.text} 
+                        className="w-10 h-10"
+                      />
+                      <span className="text-xs text-center" style={{ 
+                        color: weatherType ? getWeatherTypeColor(weatherType) : 'inherit'
+                      }}>
+                        {hour.weatherCondition.typeText || hour.weatherCondition.text}
+                      </span>
+                    </div>
+                  )}
+                  <span className="font-bold">
+                    {hour.weatherData.temperature.value}°
+                  </span>
+                  <span 
+                    className={`text-xs ${getPrecipitationStyle(precipProbability)}`}
+                    title={getPrecipitationDescription(precipProbability)}
+                  >
+                    {precipProbability}%
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {hour.weatherData.windDirection.text}
+                  </span>
+                </div>
+              );
+            })
           ) : (
             <div className="text-gray-500 dark:text-gray-400 w-full text-center py-4">暂无每小时天气数据</div>
           )}
