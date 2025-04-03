@@ -6,10 +6,18 @@ interface WeatherMapProps {
   location: LocationData | null;
 }
 
+// 创建单例Loader实例
+const mapLoader = new Loader({
+  apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+  version: 'weekly',
+  libraries: ['places']
+});
+
 const WeatherMap: React.FC<WeatherMapProps> = ({ location }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
+  const googleRef = useRef<typeof google | null>(null);
 
   useEffect(() => {
     const initMap = async () => {
@@ -22,28 +30,17 @@ const WeatherMap: React.FC<WeatherMapProps> = ({ location }) => {
         return;
       }
 
-      const loader = new Loader({
-        apiKey,
-        version: 'weekly',
-        libraries: ['places']
-      });
-
       try {
-        // 使用unknown作为中间类型进行转换
-        const mapsLib = await loader.importLibrary('maps') as unknown;
-        // 然后断言为具体类型
-        const { Map, Marker, MapTypeId } = mapsLib as {
-          Map: typeof google.maps.Map;
-          Marker: typeof google.maps.Marker;
-          MapTypeId: typeof google.maps.MapTypeId;
-        };
+        // 导入maps库
+        await mapLoader.load();
+        googleRef.current = window.google;
         
         const defaultLocation = location || { lat: 39.9042, lng: 116.4074 }; // 默认北京位置
         
         const mapOptions = {
           center: defaultLocation,
           zoom: 10,
-          mapTypeId: MapTypeId.ROADMAP,
+          mapTypeId: google.maps.MapTypeId.ROADMAP,
           styles: [
             {
               featureType: 'administrative',
@@ -57,11 +54,11 @@ const WeatherMap: React.FC<WeatherMapProps> = ({ location }) => {
           ]
         };
         
-        mapInstanceRef.current = new Map(mapRef.current, mapOptions);
+        mapInstanceRef.current = new google.maps.Map(mapRef.current, mapOptions);
         
         if (location) {
           // 添加标记
-          markerRef.current = new Marker({
+          markerRef.current = new google.maps.Marker({
             position: location,
             map: mapInstanceRef.current,
             title: location.address || '所选位置',
@@ -91,18 +88,14 @@ const WeatherMap: React.FC<WeatherMapProps> = ({ location }) => {
       }
       
       try {
-        // 使用unknown作为中间类型进行转换
-        const mapsLib = await new Loader({
-          apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
-          version: 'weekly',
-        }).importLibrary('maps') as unknown;
+        // 确保google对象已加载
+        if (!googleRef.current) {
+          await mapLoader.load();
+          googleRef.current = window.google;
+        }
         
-        // 然后断言为具体类型
-        const { Marker } = mapsLib as {
-          Marker: typeof google.maps.Marker;
-        };
-        
-        markerRef.current = new Marker({
+        // 创建新标记
+        markerRef.current = new google.maps.Marker({
           position: location,
           map: mapInstanceRef.current,
           title: location.address || '所选位置',
@@ -112,7 +105,9 @@ const WeatherMap: React.FC<WeatherMapProps> = ({ location }) => {
       }
     };
     
-    updateMap();
+    if (googleRef.current) {
+      updateMap();
+    }
   }, [location]);
 
   return (
