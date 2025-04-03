@@ -94,6 +94,31 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
     return date.getHours() + ':00';
   };
   
+  // 根据湿度值获取对应的样式和描述
+  const getHumidityStyle = (humidity: number) => {
+    if (humidity < 30) {
+      return 'text-yellow-600';
+    } else if (humidity < 50) {
+      return 'text-green-500';
+    } else if (humidity < 70) {
+      return 'text-blue-500';
+    } else {
+      return 'text-blue-700';
+    }
+  };
+
+  const getHumidityDescription = (humidity: number) => {
+    if (humidity < 30) {
+      return '干燥';
+    } else if (humidity < 50) {
+      return '舒适';
+    } else if (humidity < 70) {
+      return '潮湿';
+    } else {
+      return '非常潮湿';
+    }
+  };
+  
   const prepareChartData = () => {
     if (!data || !data.hours || data.hours.length === 0) {
       return {
@@ -275,7 +300,7 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
   };
   
   const getItemClassName = (index: number) => {
-    return `flex flex-col items-center min-w-16 py-2 rounded-lg transition-all duration-200 ${
+    return `flex flex-col items-center min-w-[80px] py-2 rounded-lg transition-all duration-200 ${
       index === highlightedHourIndex ? 'bg-blue-50 dark:bg-blue-900/30 shadow-md transform scale-105' : ''
     }`;
   };
@@ -331,6 +356,7 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
             data.hours.slice(0, 24).map((hour, index) => {
               const weatherType = hour.weatherCondition.type || '';
               const precipProbability = hour.weatherData.precipitationProbability.value;
+              const humidity = hour.weatherData.humidity.value;
               return (
                 <div 
                   key={index} 
@@ -361,16 +387,27 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
                   <span className="font-bold">
                     {formatTemperature(hour.weatherData.temperature.value, hour.weatherData.temperature.unit)}
                   </span>
-                  <span 
-                    className={`text-xs ${getPrecipitationStyle(precipProbability)}`}
-                    title={getPrecipitationDescription(precipProbability)}
-                  >
-                    {precipProbability}%
-                  </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {hour.weatherData.windDirection.text || ''} 
-                    {hour.weatherData.windSpeed.value < 5 ? '' : formatWindSpeed(hour.weatherData.windSpeed.value, hour.weatherData.windSpeed.unit).replace('公里/小时', 'km/h')}
-                  </span>
+                  
+                  <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-1 w-full px-1">
+                    <div className="flex flex-col items-center" title={getPrecipitationDescription(precipProbability)}>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">降水</span>
+                      <span className={`text-xs ${getPrecipitationStyle(precipProbability)}`}>
+                        {precipProbability}%
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-center" title={getHumidityDescription(humidity)}>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">湿度</span>
+                      <span className={`text-xs ${getHumidityStyle(humidity)}`}>
+                        {humidity}%
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-center col-span-2 mt-1">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                        {hour.weatherData.windDirection.text || ''} 
+                        {hour.weatherData.windSpeed.value < 5 ? '' : formatWindSpeed(hour.weatherData.windSpeed.value, hour.weatherData.windSpeed.unit).replace('公里/小时', 'km/h')}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               );
             })
