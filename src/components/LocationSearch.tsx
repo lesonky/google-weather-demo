@@ -5,11 +5,16 @@ import { LocationData } from '@/types/weather';
 interface LocationSearchProps {
   onLocationChange: (location: LocationData) => void;
   recentSearches?: string[];
+  isLoading?: boolean;
 }
 
-const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recentSearches = [] }) => {
+const LocationSearch: React.FC<LocationSearchProps> = ({ 
+  onLocationChange, 
+  recentSearches = [],
+  isLoading: externalLoading = false
+}) => {
   const [address, setAddress] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [internalLoading, setInternalLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLocationError, setIsLocationError] = useState(false);
   const [showRecentSearches, setShowRecentSearches] = useState(false);
@@ -18,11 +23,19 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
   const formRef = useRef<HTMLFormElement>(null);
   const submitButtonRef = useRef<HTMLButtonElement>(null);
 
+  const isLoading = internalLoading || externalLoading;
+
+  useEffect(() => {
+    if (externalLoading) {
+      setShowRecentSearches(false);
+    }
+  }, [externalLoading]);
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!address.trim() || isLoading) return;
 
-    setIsLoading(true);
+    setInternalLoading(true);
     setError(null);
     setIsLocationError(false);
 
@@ -32,7 +45,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
         onLocationChange({ ...location, address });
       } else {
         setError('无法找到该地址，请尝试更具体的位置');
-        setIsLoading(false);
+        setInternalLoading(false);
       }
     } catch (err) {
       console.error(err);
@@ -43,18 +56,16 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
       } else {
         setError('搜索位置时出错，请稍后再试');
       }
-      setIsLoading(false);
+      setInternalLoading(false);
     }
   };
 
   const handleSelectRecentSearch = (term: string) => {
-    if (isLoading) return; // 如果正在加载，不允许选择
+    if (isLoading) return;
     
     setAddress(term);
-    // 关闭历史搜索下拉菜单
     setShowRecentSearches(false);
     
-    // 立即触发搜索
     setTimeout(() => {
       if (submitButtonRef.current) {
         submitButtonRef.current.click();
@@ -62,7 +73,6 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
     }, 0);
   };
 
-  // 添加点击外部关闭最近搜索下拉菜单
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -81,16 +91,14 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
     };
   }, []);
 
-  // 当按钮被点击时切换下拉菜单
   const toggleRecentSearches = (e: React.MouseEvent) => {
-    if (isLoading) return; // 如果正在加载，不允许切换
+    if (isLoading) return;
     
-    e.preventDefault(); // 防止表单提交
-    e.stopPropagation(); // 防止事件冒泡
+    e.preventDefault();
+    e.stopPropagation();
     setShowRecentSearches(!showRecentSearches);
   };
 
-  // 按ESC键关闭下拉菜单
   useEffect(() => {
     const handleEscKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && showRecentSearches) {
@@ -103,28 +111,6 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
       document.removeEventListener('keydown', handleEscKey);
     };
   }, [showRecentSearches]);
-
-  // 确保外部传入的isLoading状态变化能正确反映在组件内部
-  useEffect(() => {
-    const checkLoading = () => {
-      const inputDisabled = document.querySelector('input[disabled]');
-      const buttonDisabled = document.querySelector('button[disabled]');
-      if (inputDisabled || buttonDisabled) {
-        // 如果找到禁用的输入元素，说明应该处于加载状态
-        if (!isLoading) {
-          setIsLoading(true);
-        }
-      } else {
-        // 如果没有禁用的元素，但isLoading为true，则重置
-        if (isLoading) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    const interval = setInterval(checkLoading, 500);
-    return () => clearInterval(interval);
-  }, [isLoading]);
 
   return (
     <div className="w-full">

@@ -964,6 +964,7 @@ export default function Home() {
             <LocationSearch 
               onLocationChange={handleLocationChange} 
               recentSearches={searchTerms} 
+              isLoading={loading}
             />
           </div>
         
