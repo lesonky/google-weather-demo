@@ -18,8 +18,7 @@ import { HourlyForecast as HourlyForecastType } from '@/types/weather';
 import { 
   getWeatherTypeColor, 
   getPrecipitationDescription,
-  formatTemperature,
-  formatWindSpeed
+  formatTemperature
 } from '@/lib/weatherUtils';
 
 // 注册Chart.js组件
@@ -300,7 +299,7 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
   };
   
   const getItemClassName = (index: number) => {
-    return `flex flex-col items-center min-w-[80px] py-2 rounded-lg transition-all duration-200 ${
+    return `flex flex-col items-center min-w-[100px] py-2 px-1 rounded-lg transition-all duration-200 ${
       index === highlightedHourIndex ? 'bg-blue-50 dark:bg-blue-900/30 shadow-md transform scale-105' : ''
     }`;
   };
@@ -402,9 +401,10 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
                       </span>
                     </div>
                     <div className="flex flex-col items-center col-span-2 mt-1">
-                      <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                        {hour.weatherData.windDirection.text || ''} 
-                        {hour.weatherData.windSpeed.value < 5 ? '' : formatWindSpeed(hour.weatherData.windSpeed.value, hour.weatherData.windSpeed.unit).replace('公里/小时', 'km/h')}
+                      <span className="text-xs text-gray-500 dark:text-gray-400 text-center max-w-full truncate">
+                        {hour.weatherData.windDirection.text || ''}
+                        {hour.weatherData.windSpeed.value < 5 ? '' : 
+                          ` ${hour.weatherData.windSpeed.value} km/h`}
                       </span>
                     </div>
                   </div>
