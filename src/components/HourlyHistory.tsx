@@ -122,23 +122,23 @@ const HourlyHistory: React.FC<HourlyHistoryProps> = ({ data, isLoading }) => {
   
   if (isLoading) {
     return (
-      <div className="p-6 bg-white rounded-lg shadow-md animate-pulse">
-        <div className="h-6 bg-gray-200 rounded w-1/2 mb-4"></div>
-        <div className="h-48 bg-gray-200 rounded w-full"></div>
+      <div className="p-6 bg-card-background rounded-lg shadow-md animate-pulse">
+        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
+        <div className="h-48 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="p-6 bg-white rounded-lg shadow-md">
-        <p className="text-gray-500">请选择一个位置查看历史天气数据</p>
+      <div className="p-6 bg-card-background rounded-lg shadow-md">
+        <p className="text-gray-500 dark:text-gray-400">请选择一个位置查看历史天气数据</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md">
+    <div className="p-6 bg-card-background rounded-lg shadow-md">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">历史天气数据</h2>
         <div className="flex gap-2">
@@ -149,7 +149,7 @@ const HourlyHistory: React.FC<HourlyHistoryProps> = ({ data, isLoading }) => {
               className={`px-3 py-1 text-sm rounded-full ${
                 selectedMetric === option.id
                   ? 'bg-blue-500 text-white'
-                  : 'bg-gray-200 text-gray-700'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               }`}
             >
               {option.label}
@@ -165,7 +165,7 @@ const HourlyHistory: React.FC<HourlyHistoryProps> = ({ data, isLoading }) => {
       <div className="mt-6">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b">
+            <tr className="border-b dark:border-gray-700">
               <th className="text-left py-2">时间</th>
               <th className="text-left py-2">天气状况</th>
               <th className="text-left py-2">温度</th>
@@ -176,7 +176,7 @@ const HourlyHistory: React.FC<HourlyHistoryProps> = ({ data, isLoading }) => {
           </thead>
           <tbody>
             {data.hours.map((hour, index) => (
-              <tr key={index} className="border-b">
+              <tr key={index} className="border-b dark:border-gray-700">
                 <td className="py-2">{formatTime(hour.time)}</td>
                 <td className="py-2">
                   {hour.weatherCondition && (

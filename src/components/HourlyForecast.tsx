@@ -124,23 +124,23 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
   
   if (isLoading) {
     return (
-      <div className="p-6 bg-white rounded-lg shadow-md animate-pulse">
-        <div className="h-6 bg-gray-200 rounded w-1/2 mb-4"></div>
-        <div className="h-48 bg-gray-200 rounded w-full"></div>
+      <div className="p-6 bg-card-background rounded-lg shadow-md animate-pulse">
+        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
+        <div className="h-48 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="p-6 bg-white rounded-lg shadow-md">
-        <p className="text-gray-500">请选择一个位置查看每小时天气预报</p>
+      <div className="p-6 bg-card-background rounded-lg shadow-md">
+        <p className="text-gray-500 dark:text-gray-400">请选择一个位置查看每小时天气预报</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md">
+    <div className="p-6 bg-card-background rounded-lg shadow-md">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">每小时天气预报</h2>
         <div className="flex gap-2">
@@ -151,7 +151,7 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
               className={`px-3 py-1 text-sm rounded-full ${
                 selectedMetric === option.id
                   ? 'bg-blue-500 text-white'
-                  : 'bg-gray-200 text-gray-700'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
               }`}
             >
               {option.label}
@@ -182,13 +182,13 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
                 <span className="font-bold">
                   {hour.weatherData.temperature.value}°
                 </span>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-500 dark:text-gray-400">
                   {hour.weatherData.precipitationProbability.value}%
                 </span>
               </div>
             ))
           ) : (
-            <div className="text-gray-500 w-full text-center py-4">暂无每小时天气数据</div>
+            <div className="text-gray-500 dark:text-gray-400 w-full text-center py-4">暂无每小时天气数据</div>
           )}
         </div>
       </div>
