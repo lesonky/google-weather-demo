@@ -769,13 +769,17 @@ export default function Home() {
   };
   
   const handleLocationChange = async (newLocation: LocationData) => {
+    // 如果已经在加载中，不要重复处理
+    if (loading) return;
+    
     setLocation(newLocation);
     setLoading(true); // 明确设置loading状态为true
     try {
       await fetchWeatherData(newLocation.lat, newLocation.lng);
     } catch (error) {
       handleApiError(error);
-      setLoading(false);
+    } finally {
+      setLoading(false); // 确保任何情况下都重置加载状态
     }
   };
 

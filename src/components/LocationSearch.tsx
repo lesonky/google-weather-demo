@@ -16,10 +16,11 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
   const recentSearchesRef = useRef<HTMLDivElement>(null);
   const recentButtonRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const submitButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!address.trim()) return;
+    if (!address.trim() || isLoading) return;
 
     setIsLoading(true);
     setError(null);
@@ -31,6 +32,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
         onLocationChange({ ...location, address });
       } else {
         setError('无法找到该地址，请尝试更具体的位置');
+        setIsLoading(false);
       }
     } catch (err) {
       console.error(err);
@@ -41,18 +43,23 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
       } else {
         setError('搜索位置时出错，请稍后再试');
       }
-    } finally {
       setIsLoading(false);
     }
   };
 
   const handleSelectRecentSearch = (term: string) => {
+    if (isLoading) return; // 如果正在加载，不允许选择
+    
     setAddress(term);
-    if (formRef.current) {
-      const event = new Event('submit', { cancelable: true });
-      formRef.current.dispatchEvent(event);
-    }
+    // 关闭历史搜索下拉菜单
     setShowRecentSearches(false);
+    
+    // 立即触发搜索
+    setTimeout(() => {
+      if (submitButtonRef.current) {
+        submitButtonRef.current.click();
+      }
+    }, 0);
   };
 
   // 添加点击外部关闭最近搜索下拉菜单
@@ -76,6 +83,8 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
 
   // 当按钮被点击时切换下拉菜单
   const toggleRecentSearches = (e: React.MouseEvent) => {
+    if (isLoading) return; // 如果正在加载，不允许切换
+    
     e.preventDefault(); // 防止表单提交
     e.stopPropagation(); // 防止事件冒泡
     setShowRecentSearches(!showRecentSearches);
@@ -95,6 +104,28 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
     };
   }, [showRecentSearches]);
 
+  // 确保外部传入的isLoading状态变化能正确反映在组件内部
+  useEffect(() => {
+    const checkLoading = () => {
+      const inputDisabled = document.querySelector('input[disabled]');
+      const buttonDisabled = document.querySelector('button[disabled]');
+      if (inputDisabled || buttonDisabled) {
+        // 如果找到禁用的输入元素，说明应该处于加载状态
+        if (!isLoading) {
+          setIsLoading(true);
+        }
+      } else {
+        // 如果没有禁用的元素，但isLoading为true，则重置
+        if (isLoading) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    const interval = setInterval(checkLoading, 500);
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
   return (
     <div className="w-full">
       <form ref={formRef} onSubmit={handleSearch} className="flex flex-col gap-2">
@@ -105,7 +136,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="输入城市或地址..."
-              className={`w-full py-3 px-4 rounded-l-full focus:outline-none focus:ring-2 focus:ring-google-blue ${isLoading ? 'opacity-70' : ''}`}
+              className={`w-full py-3 px-4 rounded-l-full focus:outline-none focus:ring-2 focus:ring-google-blue ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
               style={{ 
                 border: '1px solid var(--search-border)',
                 borderRight: 'none',
@@ -114,6 +145,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
                 boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
               }}
               disabled={isLoading}
+              aria-disabled={isLoading}
             />
             {isLoading && (
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -128,13 +160,15 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
               type="button"
               ref={recentButtonRef}
               onClick={toggleRecentSearches}
-              className={`py-3 px-3 border-y border-l ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+              className={`py-3 px-3 border-y border-l ${isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
               style={{ 
                 borderColor: 'var(--search-border)', 
                 background: 'var(--card-background)',
                 color: showRecentSearches ? 'var(--tab-active)' : 'var(--foreground)'
               }}
               disabled={isLoading}
+              aria-disabled={isLoading}
+              title="最近搜索"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
@@ -144,9 +178,11 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
 
           <button
             type="submit"
-            className={`rounded-r-full text-white py-2 px-5 transition hover:bg-opacity-90 ${isLoading ? 'opacity-70 cursor-wait' : ''}`}
+            ref={submitButtonRef}
+            className={`rounded-r-full text-white py-2 px-5 transition ${isLoading ? 'opacity-70 cursor-wait' : 'hover:bg-opacity-90'}`}
             style={{ background: 'var(--header-bg-from)' }}
             disabled={isLoading}
+            aria-disabled={isLoading}
           >
             {isLoading ? (
               <div className="flex items-center">
