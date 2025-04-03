@@ -553,17 +553,17 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen" style={{ background: 'var(--main-bg)' }}>
       <header 
-        className="shadow-md text-white p-6" 
+        className="shadow-md text-white p-4" 
         style={{ 
           background: `linear-gradient(to right, var(--header-bg-from), var(--header-bg-to))` 
         }}
       >
         <div className="container flex flex-col mx-auto justify-between items-center md:flex-row">
           <div className="flex items-center">
-            <svg className="h-10 mr-3 w-10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg className="h-8 mr-2 w-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 3V4M12 20V21M4 12H3M21 12H20M6.3 6.3L5.5 5.5M18.7 6.3L19.5 5.5M17.7 17.7L18.5 18.5M6.3 17.7L5.5 18.5M16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8C14.2091 8 16 9.79086 16 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <h1 className="font-bold text-3xl">Google 天气</h1>
+            <h1 className="font-normal text-2xl">Google 天气</h1>
           </div>
           
           <div className="flex mt-4 items-center md:mt-0">
@@ -575,11 +575,11 @@ export default function Home() {
                 title={isDarkMode ? "切换到亮色模式" : "切换到暗色模式"}
               >
                 {isDarkMode ? (
-                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                   </svg>
                 ) : (
-                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                   </svg>
                 )}
@@ -598,7 +598,7 @@ export default function Home() {
       <main className="container flex-grow mx-auto p-4">
         {location && (
           <div className="mb-6">
-            <h2 className="font-semibold text-xl mb-2">
+            <h2 className="font-normal text-xl mb-2 text-google-gray-800">
               {location.address || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
             </h2>
           </div>
@@ -621,7 +621,7 @@ export default function Home() {
           
           <div className="lg:col-span-2">
             <div 
-              className="rounded-lg shadow-md mb-6 p-4" 
+              className="rounded-lg shadow-sm mb-6 p-4" 
               style={{ background: 'var(--card-background)' }}
             >
               <div className="border-b flex overflow-x-auto">
@@ -695,13 +695,13 @@ export default function Home() {
       </main>
       
       <footer 
-        className="mt-auto text-white p-6"
+        className="mt-auto text-white p-4"
         style={{ background: 'var(--footer-bg)' }}
       >
         <div className="container mx-auto">
           <div className="flex flex-col justify-between items-center md:flex-row">
             <div className="mb-4 md:mb-0">
-              <h3 className="font-bold text-xl mb-2">Google 天气</h3>
+              <h3 className="font-normal text-lg mb-2">Google 天气</h3>
               <p style={{ color: 'var(--footer-text-muted)' }}>
                 基于 Google Maps Platform Weather API 的全球天气信息服务
               </p>

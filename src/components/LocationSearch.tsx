@@ -50,7 +50,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange }) => 
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder="输入城市或地址..."
-            className="w-full py-3 px-4 rounded-lg focus:outline-none focus:ring-2"
+            className="w-full py-3 px-4 rounded-full focus:outline-none focus:ring-2 focus:ring-google-blue"
             style={{ 
               border: '1px solid var(--search-border)',
               background: 'var(--card-background)', 
@@ -61,7 +61,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange }) => 
           />
           <button
             type="submit"
-            className="rounded-md text-white py-1 px-4 transition top-1/2 right-2 -translate-y-1/2 absolute hover:opacity-90"
+            className="rounded-full text-white py-2 px-5 transition top-1/2 right-2 -translate-y-1/2 absolute hover:bg-opacity-90"
             style={{ background: 'var(--header-bg-from)' }}
             disabled={isLoading}
           >
@@ -70,11 +70,11 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange }) => 
         </div>
         {error && (
           <div className={`${isLocationError ? 'p-3 rounded-md' : ''}`} style={{
-            background: isLocationError ? 'rgba(253, 224, 71, 0.1)' : 'transparent',
-            border: isLocationError ? '1px solid rgba(253, 224, 71, 0.3)' : 'none'
+            background: isLocationError ? 'rgba(251, 188, 5, 0.1)' : 'transparent',
+            border: isLocationError ? '1px solid rgba(251, 188, 5, 0.3)' : 'none'
           }}>
             <p className="text-sm" style={{ 
-              color: isLocationError ? '#b45309' : '#ef4444' 
+              color: isLocationError ? '#EA4335' : '#EA4335' 
             }}>
               {error}
             </p>

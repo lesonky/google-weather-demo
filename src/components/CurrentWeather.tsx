@@ -9,30 +9,30 @@ interface CurrentWeatherProps {
 const CurrentWeather: React.FC<CurrentWeatherProps> = ({ data, isLoading }) => {
   if (isLoading) {
     return (
-      <div className="p-6 bg-card-background rounded-lg shadow-md animate-pulse">
-        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
-        <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-4"></div>
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+      <div className="bg-card-background rounded-lg shadow-md p-6 animate-pulse">
+        <div className="rounded bg-gray-200 h-6 mb-4 w-1/2 dark:bg-gray-700"></div>
+        <div className="rounded bg-gray-200 h-10 mb-4 w-1/4 dark:bg-gray-700"></div>
+        <div className="rounded bg-gray-200 h-4 mb-2 w-3/4 dark:bg-gray-700"></div>
+        <div className="rounded bg-gray-200 h-4 mb-2 w-1/2 dark:bg-gray-700"></div>
+        <div className="rounded bg-gray-200 h-4 w-5/6 dark:bg-gray-700"></div>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="p-6 bg-card-background rounded-lg shadow-md">
+      <div className="bg-card-background rounded-lg shadow-md p-6">
         <p className="text-gray-500 dark:text-gray-400">请选择一个位置查看天气信息</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-card-background rounded-lg shadow-md">
+    <div className="bg-card-background rounded-lg shadow-md p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">当前天气</h2>
-          <p className="text-gray-500 dark:text-gray-400 text-sm">
+          <h2 className="font-bold text-2xl">当前天气</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             观测时间：{new Date(data.observationTime).toLocaleString('zh-CN')}
           </p>
         </div>
@@ -41,19 +41,19 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ data, isLoading }) => {
             <img 
               src={data.weatherCondition.icon} 
               alt={data.weatherCondition.text} 
-              className="w-16 h-16"
+              className="h-16 w-16"
             />
-            <span className="text-sm font-medium">{data.weatherCondition.text}</span>
+            <span className="font-medium text-sm">{data.weatherCondition.text}</span>
           </div>
         )}
       </div>
       
       <div className="mt-4">
-        <div className="text-5xl font-bold mb-4">
+        <div className="font-bold mb-4 text-5xl">
           {data.temperature.value}°{data.temperature.unit}
         </div>
         
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid gap-4 grid-cols-2">
           <div className="flex flex-col">
             <span className="text-gray-500 dark:text-gray-400">体感温度</span>
             <span className="font-medium">
