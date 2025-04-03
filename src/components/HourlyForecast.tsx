@@ -12,7 +12,12 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { HourlyForecast as HourlyForecastType } from '@/types/weather';
-import { getWeatherTypeColor, getPrecipitationDescription } from '@/lib/weatherUtils';
+import { 
+  getWeatherTypeColor, 
+  getPrecipitationDescription,
+  formatTemperature,
+  formatWindSpeed
+} from '@/lib/weatherUtils';
 
 // 注册Chart.js组件
 ChartJS.register(
@@ -206,7 +211,7 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
                     </div>
                   )}
                   <span className="font-bold">
-                    {hour.weatherData.temperature.value}°
+                    {formatTemperature(hour.weatherData.temperature.value, hour.weatherData.temperature.unit)}
                   </span>
                   <span 
                     className={`text-xs ${getPrecipitationStyle(precipProbability)}`}
@@ -215,7 +220,8 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
                     {precipProbability}%
                   </span>
                   <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {hour.weatherData.windDirection.text}
+                    {hour.weatherData.windDirection.text || ''} 
+                    {hour.weatherData.windSpeed.value < 5 ? '' : formatWindSpeed(hour.weatherData.windSpeed.value, hour.weatherData.windSpeed.unit).replace('公里/小时', 'km/h')}
                   </span>
                 </div>
               );

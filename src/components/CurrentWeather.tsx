@@ -6,7 +6,9 @@ import {
   getPrecipitationDescription,
   getActivitySuggestion,
   getHumidityDescription,
-  getCloudCoverDescription
+  getCloudCoverDescription,
+  formatTemperature,
+  formatWindSpeed
 } from '@/lib/weatherUtils';
 
 interface CurrentWeatherProps {
@@ -79,7 +81,7 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ data, isLoading }) => {
       
       <div className="mt-4">
         <div className="font-bold mb-4 text-5xl">
-          {data.temperature.value}°{data.temperature.unit}
+          {formatTemperature(data.temperature.value, data.temperature.unit)}
         </div>
         
         {/* 天气建议 */}
@@ -93,7 +95,7 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ data, isLoading }) => {
           <div className="flex flex-col">
             <span className="text-gray-500 dark:text-gray-400">体感温度</span>
             <span className="font-medium">
-              {data.apparentTemperature.value}°{data.apparentTemperature.unit}
+              {formatTemperature(data.apparentTemperature.value, data.apparentTemperature.unit)}
             </span>
           </div>
           
@@ -108,7 +110,7 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ data, isLoading }) => {
           <div className="flex flex-col">
             <span className="text-gray-500 dark:text-gray-400">风速</span>
             <span className="font-medium">
-              {data.windSpeed.value} {data.windSpeed.unit}
+              {formatWindSpeed(data.windSpeed.value, data.windSpeed.unit)}
             </span>
           </div>
           

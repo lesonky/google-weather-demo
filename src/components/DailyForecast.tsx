@@ -4,7 +4,10 @@ import {
   getWeatherTypeColor,
   getUVIndexLevel,
   getPrecipitationDescription,
-  getActivitySuggestion
+  getActivitySuggestion,
+  formatTemperature,
+  formatWindSpeed,
+  formatPrecipitation
 } from '@/lib/weatherUtils';
 
 interface DailyForecastProps {
@@ -113,7 +116,7 @@ const DailyForecast: React.FC<DailyForecastProps> = ({ data, isLoading }) => {
                 
                 <div className="text-right">
                   <div className="flex items-center space-x-2">
-                    <span className="font-bold">{day.temperatureHigh.value}°</span>
+                    <span className="font-bold">{formatTemperature(day.temperatureHigh.value, day.temperatureHigh.unit)}</span>
                     <div className="w-20 h-2 bg-gray-200 dark:bg-gray-700 rounded-full relative">
                       <div 
                         className="h-2 bg-gradient-to-r from-blue-500 to-red-500 rounded-full absolute"
@@ -123,7 +126,7 @@ const DailyForecast: React.FC<DailyForecastProps> = ({ data, isLoading }) => {
                         }}
                       ></div>
                     </div>
-                    <span className="text-gray-500 dark:text-gray-400">{day.temperatureLow.value}°</span>
+                    <span className="text-gray-500 dark:text-gray-400">{formatTemperature(day.temperatureLow.value, day.temperatureLow.unit)}</span>
                   </div>
                 </div>
               </div>
@@ -158,7 +161,7 @@ const DailyForecast: React.FC<DailyForecastProps> = ({ data, isLoading }) => {
                 <div className="flex flex-col">
                   <span className="text-xs text-gray-500 dark:text-gray-400">风向/风速</span>
                   <span className="text-sm">
-                    {day.windDirection?.text || ''} {day.windSpeed.value} {day.windSpeed.unit}
+                    {day.windDirection?.text || ''} {formatWindSpeed(day.windSpeed.value, day.windSpeed.unit)}
                   </span>
                 </div>
                 
@@ -185,7 +188,7 @@ const DailyForecast: React.FC<DailyForecastProps> = ({ data, isLoading }) => {
                 
                 <div className="flex flex-col">
                   <span className="text-xs text-gray-500 dark:text-gray-400">降水量</span>
-                  <span className="text-sm">{day.precipitationAmount.value} {day.precipitationAmount.unit}</span>
+                  <span className="text-sm">{formatPrecipitation(day.precipitationAmount.value, day.precipitationAmount.unit)}</span>
                 </div>
                 
                 <div className="flex flex-col">

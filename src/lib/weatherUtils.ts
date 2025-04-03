@@ -155,8 +155,16 @@ export const getWindDirectionText = (cardinal: string): string => {
  * @returns 格式化的温度显示
  */
 export const formatTemperature = (temp: number, unit: string): string => {
-  const unitText = TEMPERATURE_UNIT_MAPPING[unit] || unit;
-  return `${Math.round(temp)}${unitText}`;
+  const formattedTemp = Math.round(temp);
+  if (unit === 'CELSIUS') {
+    return `${formattedTemp}°C`;
+  } else if (unit === 'FAHRENHEIT') {
+    return `${formattedTemp}°F`;
+  } else {
+    // 如果单位不是标准的，尝试使用映射或原样返回
+    const unitText = TEMPERATURE_UNIT_MAPPING[unit] || unit;
+    return `${formattedTemp}${unitText}`;
+  }
 };
 
 /**
@@ -166,8 +174,16 @@ export const formatTemperature = (temp: number, unit: string): string => {
  * @returns 格式化的风速显示
  */
 export const formatWindSpeed = (speed: number, unit: string): string => {
-  const unitText = SPEED_UNIT_MAPPING[unit] || unit;
-  return `${Math.round(speed)} ${unitText}`;
+  const formattedSpeed = Math.round(speed);
+  if (unit === 'KILOMETERS_PER_HOUR') {
+    return `${formattedSpeed} 公里/小时`;
+  } else if (unit === 'MILES_PER_HOUR') {
+    return `${formattedSpeed} 英里/小时`;
+  } else {
+    // 如果单位不是标准的，尝试使用映射或原样返回
+    const unitText = SPEED_UNIT_MAPPING[unit] || unit;
+    return `${formattedSpeed} ${unitText}`;
+  }
 };
 
 /**
@@ -324,5 +340,28 @@ export const getHumidityDescription = (humidity: number): { description: string;
       description: '非常潮湿', 
       suggestion: '湿度很高，注意防潮、防霉。' 
     };
+  }
+};
+
+/**
+ * 格式化降水量显示
+ * @param amount 降水量数值
+ * @param unit 降水量单位
+ * @returns 格式化的降水量显示
+ */
+export const formatPrecipitation = (amount: number, unit: string): string => {
+  if (amount === 0) {
+    return '0 毫米';
+  }
+  
+  // 常见的降水量单位
+  if (unit === 'MILLIMETERS' || unit.toUpperCase() === 'MM') {
+    // 小于1毫米时保留一位小数
+    return amount < 1 ? `${amount.toFixed(1)} 毫米` : `${Math.round(amount)} 毫米`;
+  } else if (unit === 'INCHES' || unit.toUpperCase() === 'IN') {
+    return `${amount.toFixed(2)} 英寸`;
+  } else {
+    // 默认情况，可能是其他单位或未知单位
+    return `${amount} ${unit}`;
   }
 }; 
