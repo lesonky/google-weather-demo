@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import LocationSearch from '@/components/LocationSearch';
 import ErrorDisplay from '@/components/ErrorDisplay';
@@ -95,13 +95,28 @@ interface HourDataItem {
 
 // 生成完整的图标URL
 const generateIconUrl = (iconBaseUri: string, isDarkMode: boolean = false): string => {
-  // 如果URL已经包含.svg，先移除它
-  const baseUri = iconBaseUri.endsWith('.svg') 
-    ? iconBaseUri.substring(0, iconBaseUri.length - 4) 
-    : iconBaseUri;
+  // 检查URL是否已经有_dark后缀
+  const hasDarkSuffix = iconBaseUri.includes('_dark');
+  
+  // 移除现有的_dark后缀和.svg扩展名
+  let baseUri = iconBaseUri;
+  if (hasDarkSuffix) {
+    baseUri = baseUri.replace('_dark', '');
+  }
+  if (baseUri.endsWith('.svg')) {
+    baseUri = baseUri.substring(0, baseUri.length - 4);
+  }
+  
+  // 检查当前文档主题 - 仅在客户端环境中执行
+  let useDarkTheme = isDarkMode;
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    useDarkTheme = currentTheme === 'dark' || 
+      (currentTheme === null && isDarkMode);
+  }
   
   // 如果需要深色模式，添加 _dark 后缀
-  const themeSuffix = isDarkMode ? '_dark' : '';
+  const themeSuffix = useDarkTheme ? '_dark' : '';
   // 图标文件扩展名
   const extension = '.svg';
   
@@ -349,12 +364,105 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<string>('current');
   const [loading, setLoading] = useState<boolean>(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+  const [isMounted, setIsMounted] = useState<boolean>(false);
   
   const [currentWeather, setCurrentWeather] = useState<CurrentWeatherType | null>(null);
   const [hourlyForecast, setHourlyForecast] = useState<HourlyForecastType | null>(null);
   const [dailyForecast, setDailyForecast] = useState<DailyForecastType | null>(null);
   const [hourlyHistory, setHourlyHistory] = useState<HourlyHistoryType | null>(null);
   const [apiError, setApiError] = useState<Error | ApiError | null>(null);
+  
+  // 组件挂载后设置isMounted为true
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+  
+  // 在组件挂载时检查系统主题
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      setIsDarkMode(darkModeMediaQuery.matches);
+      
+      // 监听系统主题变化
+      const handleChange = (e: MediaQueryListEvent) => {
+        setIsDarkMode(e.matches);
+      };
+      
+      darkModeMediaQuery.addEventListener('change', handleChange);
+      return () => darkModeMediaQuery.removeEventListener('change', handleChange);
+    }
+  }, []);
+  
+  // 应用当前主题到文档
+  useEffect(() => {
+    if (!isMounted) return;
+    
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+      
+      // 如果已经有天气数据，更新所有数据以刷新图标
+      if (location) {
+        // 仅在已经加载了数据的情况下更新图标，避免不必要的API调用
+        if (currentWeather) {
+          setCurrentWeather(prevData => {
+            if (!prevData) return null;
+            return {
+              ...prevData,
+              weatherCondition: {
+                ...prevData.weatherCondition,
+                icon: generateIconUrl(prevData.weatherCondition.icon, isDarkMode)
+              }
+            };
+          });
+        }
+        
+        if (hourlyForecast && hourlyForecast.hours.length > 0) {
+          setHourlyForecast(prevData => {
+            if (!prevData || !prevData.hours.length) return { hours: [] };
+            return {
+              hours: prevData.hours.map(hour => ({
+                ...hour,
+                weatherCondition: {
+                  ...hour.weatherCondition,
+                  icon: generateIconUrl(hour.weatherCondition.icon, isDarkMode)
+                }
+              }))
+            };
+          });
+        }
+        
+        if (dailyForecast && dailyForecast.days.length > 0) {
+          setDailyForecast(prevData => {
+            if (!prevData || !prevData.days.length) return null;
+            return {
+              days: prevData.days.map(day => ({
+                ...day,
+                weatherCondition: {
+                  ...day.weatherCondition,
+                  icon: generateIconUrl(day.weatherCondition.icon, isDarkMode)
+                }
+              }))
+            };
+          });
+        }
+        
+        if (hourlyHistory && hourlyHistory.hours.length > 0) {
+          setHourlyHistory(prevData => {
+            if (!prevData || !prevData.hours.length) return null;
+            return {
+              hours: prevData.hours.map(hour => ({
+                ...hour,
+                weatherCondition: {
+                  ...hour.weatherCondition,
+                  icon: generateIconUrl(hour.weatherCondition.icon, isDarkMode)
+                }
+              }))
+            };
+          });
+        }
+      }
+    }
+  }, [isDarkMode, isMounted]);
   
   // 处理和分类错误
   const handleApiError = (error: unknown): void => {
@@ -440,45 +548,54 @@ export default function Home() {
 
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
-    // 如果有location，重新加载数据以更新图标
-    if (location) {
-      fetchWeatherData(location.lat, location.lng);
-    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-gradient-to-r from-blue-600 to-blue-400 shadow-md text-white p-6">
+    <div className="flex flex-col min-h-screen" style={{ background: 'var(--main-bg)' }}>
+      <header 
+        className="shadow-md text-white p-6" 
+        style={{ 
+          background: `linear-gradient(to right, var(--header-bg-from), var(--header-bg-to))` 
+        }}
+      >
         <div className="container flex flex-col mx-auto justify-between items-center md:flex-row">
-          <div className="flex mb-4 items-center md:mb-0">
+          <div className="flex items-center">
             <svg className="h-10 mr-3 w-10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 3V4M12 20V21M4 12H3M21 12H20M6.3 6.3L5.5 5.5M18.7 6.3L19.5 5.5M17.7 17.7L18.5 18.5M6.3 17.7L5.5 18.5M16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8C14.2091 8 16 9.79086 16 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             <h1 className="font-bold text-3xl">Google 天气</h1>
           </div>
           
-          <div className="flex items-center">
-            <button 
-              onClick={toggleDarkMode}
-              className="p-2 mr-4 bg-white bg-opacity-20 rounded-full"
-              aria-label={isDarkMode ? "切换到亮色模式" : "切换到暗色模式"}
-            >
-              {isDarkMode ? (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              ) : (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-              )}
-            </button>
-            <LocationSearch onLocationChange={handleLocationChange} />
+          <div className="flex mt-4 items-center md:mt-0">
+            {isMounted && (
+              <button 
+                onClick={toggleDarkMode}
+                className="mr-4 dark-mode-toggle"
+                aria-label={isDarkMode ? "切换到亮色模式" : "切换到暗色模式"}
+                title={isDarkMode ? "切换到亮色模式" : "切换到暗色模式"}
+              >
+                {isDarkMode ? (
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                ) : (
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                  </svg>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </header>
       
-      <main className="container mx-auto p-4">
+      <div className="container mx-auto mt-4 p-4">
+        <div className="mx-auto max-w-md mb-6 w-full">
+          <LocationSearch onLocationChange={handleLocationChange} />
+        </div>
+      </div>
+      
+      <main className="container flex-grow mx-auto p-4">
         {location && (
           <div className="mb-6">
             <h2 className="font-semibold text-xl mb-2">
@@ -503,28 +620,63 @@ export default function Home() {
           </div>
           
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-md mb-6 p-4">
-              <div className="border-b flex">
+            <div 
+              className="rounded-lg shadow-md mb-6 p-4" 
+              style={{ background: 'var(--card-background)' }}
+            >
+              <div className="border-b flex overflow-x-auto">
                 <button
-                  className={`py-2 px-4 font-medium ${activeTab === 'current' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-500'}`}
+                  className={`py-2 px-4 font-medium whitespace-nowrap ${
+                    activeTab === 'current' 
+                      ? 'border-b-2' 
+                      : ''
+                  }`}
+                  style={{ 
+                    color: activeTab === 'current' ? 'var(--tab-active)' : 'var(--tab-inactive)',
+                    borderColor: activeTab === 'current' ? 'var(--tab-border)' : 'transparent' 
+                  }}
                   onClick={() => setActiveTab('current')}
                 >
                   当前
                 </button>
                 <button
-                  className={`py-2 px-4 font-medium ${activeTab === 'hourly' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-500'}`}
+                  className={`py-2 px-4 font-medium whitespace-nowrap ${
+                    activeTab === 'hourly' 
+                      ? 'border-b-2' 
+                      : ''
+                  }`}
+                  style={{ 
+                    color: activeTab === 'hourly' ? 'var(--tab-active)' : 'var(--tab-inactive)',
+                    borderColor: activeTab === 'hourly' ? 'var(--tab-border)' : 'transparent' 
+                  }}
                   onClick={() => setActiveTab('hourly')}
                 >
                   每小时预报
                 </button>
                 <button
-                  className={`py-2 px-4 font-medium ${activeTab === 'daily' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-500'}`}
+                  className={`py-2 px-4 font-medium whitespace-nowrap ${
+                    activeTab === 'daily' 
+                      ? 'border-b-2' 
+                      : ''
+                  }`}
+                  style={{ 
+                    color: activeTab === 'daily' ? 'var(--tab-active)' : 'var(--tab-inactive)', 
+                    borderColor: activeTab === 'daily' ? 'var(--tab-border)' : 'transparent'
+                  }}
                   onClick={() => setActiveTab('daily')}
                 >
                   每日预报
                 </button>
                 <button
-                  className={`py-2 px-4 font-medium ${activeTab === 'history' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-500'}`}
+                  className={`py-2 px-4 font-medium whitespace-nowrap ${
+                    activeTab === 'history' 
+                      ? 'border-b-2' 
+                      : ''
+                  }`}
+                  style={{ 
+                    color: activeTab === 'history' ? 'var(--tab-active)' : 'var(--tab-inactive)',
+                    borderColor: activeTab === 'history' ? 'var(--tab-border)' : 'transparent' 
+                  }}
                   onClick={() => setActiveTab('history')}
                 >
                   历史记录
@@ -542,17 +694,20 @@ export default function Home() {
         </div>
       </main>
       
-      <footer className="bg-gray-800 mt-12 text-white p-6">
+      <footer 
+        className="mt-auto text-white p-6"
+        style={{ background: 'var(--footer-bg)' }}
+      >
         <div className="container mx-auto">
           <div className="flex flex-col justify-between items-center md:flex-row">
             <div className="mb-4 md:mb-0">
               <h3 className="font-bold text-xl mb-2">Google 天气</h3>
-              <p className="text-gray-400">
+              <p style={{ color: 'var(--footer-text-muted)' }}>
                 基于 Google Maps Platform Weather API 的全球天气信息服务
               </p>
             </div>
             <div>
-              <p className="text-gray-400">© {new Date().getFullYear()} Google Weather</p>
+              <p style={{ color: 'var(--footer-text-muted)' }}>© {new Date().getFullYear()} Google Weather</p>
             </div>
           </div>
         </div>

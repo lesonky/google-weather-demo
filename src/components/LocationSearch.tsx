@@ -42,7 +42,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange }) => 
   };
 
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div className="w-full">
       <form onSubmit={handleSearch} className="flex flex-col gap-2">
         <div className="relative">
           <input
@@ -50,24 +50,36 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange }) => 
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             placeholder="输入城市或地址..."
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full py-3 px-4 rounded-lg focus:outline-none focus:ring-2"
+            style={{ 
+              border: '1px solid var(--search-border)',
+              background: 'var(--card-background)', 
+              color: 'var(--foreground)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}
             disabled={isLoading}
           />
           <button
             type="submit"
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-500 text-white px-4 py-1 rounded-md hover:bg-blue-600 transition"
+            className="rounded-md text-white py-1 px-4 transition top-1/2 right-2 -translate-y-1/2 absolute hover:opacity-90"
+            style={{ background: 'var(--header-bg-from)' }}
             disabled={isLoading}
           >
             {isLoading ? '搜索中...' : '搜索'}
           </button>
         </div>
         {error && (
-          <div className={`${isLocationError ? 'bg-yellow-50 p-3 border rounded-md border-yellow-200' : ''}`}>
-            <p className={`${isLocationError ? 'text-yellow-700' : 'text-red-500'} text-sm`}>
+          <div className={`${isLocationError ? 'p-3 rounded-md' : ''}`} style={{
+            background: isLocationError ? 'rgba(253, 224, 71, 0.1)' : 'transparent',
+            border: isLocationError ? '1px solid rgba(253, 224, 71, 0.3)' : 'none'
+          }}>
+            <p className="text-sm" style={{ 
+              color: isLocationError ? '#b45309' : '#ef4444' 
+            }}>
               {error}
             </p>
             {isLocationError && (
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="mt-1 text-sm" style={{ color: 'var(--tab-inactive)' }}>
                 建议：尝试搜索更大的城市或地区，某些偏远位置可能不被Google天气API支持。
               </p>
             )}
