@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import LocationSearch from '@/components/LocationSearch';
+import ErrorDisplay from '@/components/ErrorDisplay';
 import { 
   LocationData, 
   CurrentWeather as CurrentWeatherType,
@@ -14,7 +15,12 @@ import {
   getCurrentWeather,
   getHourlyForecast,
   getDailyForecast,
-  getHourlyHistory
+  getHourlyHistory,
+  CurrentWeather as ApiCurrentWeather,
+  ForecastResponse,
+  HourlyHistoryResponse,
+  DayPartForecast,
+  ApiError
 } from '@/lib/api';
 
 // 动态导入地图组件，避免SSR问题
@@ -33,6 +39,289 @@ const HourlyForecast = dynamic(() => import('@/components/HourlyForecast'));
 const DailyForecast = dynamic(() => import('@/components/DailyForecast'));
 const HourlyHistory = dynamic(() => import('@/components/HourlyHistory'));
 
+// 定义中间数据转换接口
+interface HourDataItem {
+  time: string;
+  weatherData: {
+    temperature: {
+      value: number;
+      unit: string;
+    };
+    apparentTemperature: {
+      value: number;
+      unit: string;
+    };
+    humidity: {
+      value: number;
+      unit: string;
+    };
+    dewPoint: {
+      value: number;
+      unit: string;
+    };
+    windSpeed: {
+      value: number;
+      unit: string;
+    };
+    windDirection: {
+      value: number;
+      unit: string;
+    };
+    uvIndex: {
+      value: number;
+    };
+    visibility: {
+      value: number;
+      unit: string;
+    };
+    pressure: {
+      value: number;
+      unit: string;
+    };
+    cloudCover: {
+      value: number;
+      unit: string;
+    };
+    precipitationProbability: {
+      value: number;
+      unit: string;
+    };
+  };
+  weatherCondition: {
+    text: string;
+    icon: string;
+  };
+}
+
+// 转换API返回的数据格式为组件需要的格式
+const convertCurrentWeather = (data: ApiCurrentWeather): CurrentWeatherType => {
+  return {
+    observationTime: data.currentTime,
+    temperature: {
+      value: data.temperature.degrees,
+      unit: data.temperature.unit,
+    },
+    apparentTemperature: {
+      value: data.feelsLikeTemperature.degrees,
+      unit: data.feelsLikeTemperature.unit,
+    },
+    humidity: {
+      value: data.relativeHumidity,
+      unit: '%',
+    },
+    dewPoint: {
+      value: data.dewPoint.degrees,
+      unit: data.dewPoint.unit,
+    },
+    windSpeed: {
+      value: data.wind.speed.value,
+      unit: data.wind.speed.unit,
+    },
+    windDirection: {
+      value: data.wind.direction.degrees,
+      unit: 'degrees',
+    },
+    uvIndex: {
+      value: data.uvIndex,
+    },
+    visibility: {
+      value: data.visibility.distance,
+      unit: data.visibility.unit,
+    },
+    pressure: {
+      value: data.airPressure.meanSeaLevelMillibars,
+      unit: 'mb',
+    },
+    cloudCover: {
+      value: data.cloudCover,
+      unit: '%',
+    },
+    precipitationProbability: {
+      value: data.precipitation.probability.percent,
+      unit: '%',
+    },
+    weatherCondition: {
+      text: data.weatherCondition.description.text,
+      icon: data.weatherCondition.iconBaseUri,
+    },
+  };
+};
+
+const convertHourlyForecast = (data: ForecastResponse): HourlyForecastType => {
+  return {
+    hours: data.forecastDays.flatMap(day => {
+      // 将白天和夜晚的预报合并为小时数据
+      const hourData: HourDataItem[] = [];
+      
+      // 简化版本，实际应用中需要根据真实API响应来处理
+      const createHourData = (forecast: DayPartForecast, time: string): HourDataItem => {
+        return {
+          time,
+          weatherData: {
+            temperature: {
+              value: 0, // DayPartForecast没有temperature字段
+              unit: 'CELSIUS',
+            },
+            apparentTemperature: {
+              value: 0, // DayPartForecast没有feelsLikeTemperature字段
+              unit: 'CELSIUS',
+            },
+            humidity: {
+              value: forecast.relativeHumidity,
+              unit: '%',
+            },
+            dewPoint: {
+              value: 0,
+              unit: 'CELSIUS',
+            },
+            windSpeed: {
+              value: forecast.wind.speed.value,
+              unit: forecast.wind.speed.unit,
+            },
+            windDirection: {
+              value: forecast.wind.direction.degrees,
+              unit: 'degrees',
+            },
+            uvIndex: {
+              value: forecast.uvIndex,
+            },
+            visibility: {
+              value: 0,
+              unit: 'km',
+            },
+            pressure: {
+              value: 0,
+              unit: 'mb',
+            },
+            cloudCover: {
+              value: forecast.cloudCover,
+              unit: '%',
+            },
+            precipitationProbability: {
+              value: forecast.precipitation.probability.percent,
+              unit: '%',
+            },
+          },
+          weatherCondition: {
+            text: forecast.weatherCondition.description.text,
+            icon: forecast.weatherCondition.iconBaseUri,
+          },
+        };
+      };
+      
+      // 添加白天小时
+      hourData.push(createHourData(day.daytimeForecast, day.daytimeForecast.interval.startTime));
+      
+      // 添加夜晚小时
+      hourData.push(createHourData(day.nighttimeForecast, day.nighttimeForecast.interval.startTime));
+      
+      return hourData;
+    }),
+  };
+};
+
+const convertDailyForecast = (data: ForecastResponse): DailyForecastType => {
+  return {
+    days: data.forecastDays.map(day => {
+      return {
+        date: `${day.displayDate.year}-${day.displayDate.month}-${day.displayDate.day}`,
+        sunrise: day.sunEvents.sunriseTime,
+        sunset: day.sunEvents.sunsetTime,
+        weatherCondition: {
+          text: day.daytimeForecast.weatherCondition.description.text,
+          icon: day.daytimeForecast.weatherCondition.iconBaseUri,
+        },
+        temperatureHigh: {
+          value: day.maxTemperature.degrees,
+          unit: day.maxTemperature.unit,
+        },
+        temperatureLow: {
+          value: day.minTemperature.degrees,
+          unit: day.minTemperature.unit,
+        },
+        precipitationProbability: {
+          value: day.daytimeForecast.precipitation.probability.percent,
+          unit: '%',
+        },
+        precipitationAmount: {
+          value: day.daytimeForecast.precipitation.qpf.quantity,
+          unit: day.daytimeForecast.precipitation.qpf.unit,
+        },
+        uvIndex: {
+          value: day.daytimeForecast.uvIndex,
+        },
+        windSpeed: {
+          value: day.daytimeForecast.wind.speed.value,
+          unit: day.daytimeForecast.wind.speed.unit,
+        },
+        humidity: {
+          value: day.daytimeForecast.relativeHumidity,
+          unit: '%',
+        },
+      };
+    }),
+  };
+};
+
+const convertHourlyHistory = (data: HourlyHistoryResponse): HourlyHistoryType => {
+  return {
+    hours: data.historyHours.map(hour => {
+      return {
+        time: hour.interval.startTime,
+        weatherData: {
+          temperature: {
+            value: hour.temperature.degrees,
+            unit: hour.temperature.unit,
+          },
+          apparentTemperature: {
+            value: hour.feelsLikeTemperature.degrees,
+            unit: hour.feelsLikeTemperature.unit,
+          },
+          humidity: {
+            value: hour.relativeHumidity,
+            unit: '%',
+          },
+          dewPoint: {
+            value: hour.dewPoint.degrees,
+            unit: hour.dewPoint.unit,
+          },
+          windSpeed: {
+            value: hour.wind.speed.value,
+            unit: hour.wind.speed.unit,
+          },
+          windDirection: {
+            value: hour.wind.direction.degrees,
+            unit: 'degrees',
+          },
+          uvIndex: {
+            value: hour.uvIndex,
+          },
+          visibility: {
+            value: hour.visibility.distance,
+            unit: hour.visibility.unit,
+          },
+          pressure: {
+            value: hour.airPressure.meanSeaLevelMillibars,
+            unit: 'mb',
+          },
+          cloudCover: {
+            value: hour.cloudCover,
+            unit: '%',
+          },
+          precipitationProbability: {
+            value: hour.precipitation.probability.percent,
+            unit: '%',
+          },
+        },
+        weatherCondition: {
+          text: hour.weatherCondition.description.text,
+          icon: hour.weatherCondition.iconBaseUri,
+        },
+      };
+    }),
+  };
+};
+
 export default function Home() {
   const [location, setLocation] = useState<LocationData | null>(null);
   const [activeTab, setActiveTab] = useState<string>('current');
@@ -42,29 +331,81 @@ export default function Home() {
   const [hourlyForecast, setHourlyForecast] = useState<HourlyForecastType | null>(null);
   const [dailyForecast, setDailyForecast] = useState<DailyForecastType | null>(null);
   const [hourlyHistory, setHourlyHistory] = useState<HourlyHistoryType | null>(null);
+  const [apiError, setApiError] = useState<Error | ApiError | null>(null);
+  
+  // 处理和分类错误
+  const handleApiError = (error: unknown): void => {
+    console.error('API错误:', error);
+    
+    // 设置错误对象
+    if (error instanceof ApiError || error instanceof Error) {
+      setApiError(error);
+    } else {
+      // 处理其他未知类型的错误
+      setApiError(new Error('获取数据时发生未知错误，请稍后再试'));
+    }
+  };
+  
+  const fetchWeatherData = async (lat: number, lng: number) => {
+    setLoading(true);
+    setApiError(null);
+    
+    try {
+      // 获取当前天气数据
+      const currentData = await getCurrentWeather(lat, lng);
+      setCurrentWeather(convertCurrentWeather(currentData));
+    } catch (error) {
+      console.error('获取当前天气失败:', error);
+      handleApiError(error);
+      setCurrentWeather(null);
+    }
+    
+    try {
+      // 获取每小时预报
+      const hourlyData = await getHourlyForecast(lat, lng);
+      setHourlyForecast(convertHourlyForecast(hourlyData));
+    } catch (error) {
+      console.error('获取每小时预报失败:', error);
+      if (!apiError) handleApiError(error);
+      setHourlyForecast(null);
+    }
+    
+    try {
+      // 获取每日预报
+      const dailyData = await getDailyForecast(lat, lng);
+      setDailyForecast(convertDailyForecast(dailyData));
+    } catch (error) {
+      console.error('获取每日预报失败:', error);
+      if (!apiError) handleApiError(error);
+      setDailyForecast(null);
+    }
+    
+    try {
+      // 获取历史数据
+      const historyData = await getHourlyHistory(lat, lng);
+      setHourlyHistory(convertHourlyHistory(historyData));
+    } catch (error) {
+      console.error('获取历史数据失败:', error);
+      if (!apiError) handleApiError(error);
+      setHourlyHistory(null);
+    }
+    
+    setLoading(false);
+  };
   
   const handleLocationChange = async (newLocation: LocationData) => {
     setLocation(newLocation);
-    setLoading(true);
-    
     try {
-      // 使用API获取天气数据
-      const currentData = await getCurrentWeather(newLocation.lat, newLocation.lng);
-      setCurrentWeather(currentData);
-      
-      const hourlyData = await getHourlyForecast(newLocation.lat, newLocation.lng);
-      setHourlyForecast(hourlyData);
-      
-      const dailyData = await getDailyForecast(newLocation.lat, newLocation.lng);
-      setDailyForecast(dailyData);
-      
-      const historyData = await getHourlyHistory(newLocation.lat, newLocation.lng);
-      setHourlyHistory(historyData);
-      
-      setLoading(false);
+      await fetchWeatherData(newLocation.lat, newLocation.lng);
     } catch (error) {
-      console.error('获取天气数据失败:', error);
+      handleApiError(error);
       setLoading(false);
+    }
+  };
+
+  const handleRetry = () => {
+    if (location) {
+      fetchWeatherData(location.lat, location.lng);
     }
   };
 
@@ -89,6 +430,12 @@ export default function Home() {
             <h2 className="font-semibold text-xl mb-2">
               {location.address || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
             </h2>
+          </div>
+        )}
+        
+        {apiError && (
+          <div className="mb-6">
+            <ErrorDisplay error={apiError} onRetry={handleRetry} />
           </div>
         )}
         

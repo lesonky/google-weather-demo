@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getLocationByAddress } from '@/lib/api';
+import { getLocationByAddress, ApiError } from '@/lib/api';
 import { LocationData } from '@/types/weather';
 
 interface LocationSearchProps {
@@ -10,6 +10,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange }) => 
   const [address, setAddress] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLocationError, setIsLocationError] = useState(false);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,6 +18,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange }) => 
 
     setIsLoading(true);
     setError(null);
+    setIsLocationError(false);
 
     try {
       const location = await getLocationByAddress(address);
@@ -26,8 +28,14 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange }) => 
         setError('无法找到该地址，请尝试更具体的位置');
       }
     } catch (err) {
-      setError('搜索位置时出错，请稍后再试');
       console.error(err);
+      
+      if (err instanceof ApiError && err.isLocationNotSupported) {
+        setError(err.message);
+        setIsLocationError(true);
+      } else {
+        setError('搜索位置时出错，请稍后再试');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -53,7 +61,18 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange }) => 
             {isLoading ? '搜索中...' : '搜索'}
           </button>
         </div>
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+        {error && (
+          <div className={`${isLocationError ? 'bg-yellow-50 p-3 border rounded-md border-yellow-200' : ''}`}>
+            <p className={`${isLocationError ? 'text-yellow-700' : 'text-red-500'} text-sm`}>
+              {error}
+            </p>
+            {isLocationError && (
+              <p className="text-sm text-gray-600 mt-1">
+                建议：尝试搜索更大的城市或地区，某些偏远位置可能不被Google天气API支持。
+              </p>
+            )}
+          </div>
+        )}
       </form>
     </div>
   );
