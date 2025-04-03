@@ -18,8 +18,8 @@ import {
   getHourlyHistory,
   CurrentWeather as ApiCurrentWeather,
   ForecastResponse,
+  HourlyForecastResponse,
   HourlyHistoryResponse,
-  DayPartForecast,
   ApiError
 } from '@/lib/api';
 
@@ -93,8 +93,24 @@ interface HourDataItem {
   };
 }
 
+// 生成完整的图标URL
+const generateIconUrl = (iconBaseUri: string, isDarkMode: boolean = false): string => {
+  // 如果URL已经包含.svg，先移除它
+  const baseUri = iconBaseUri.endsWith('.svg') 
+    ? iconBaseUri.substring(0, iconBaseUri.length - 4) 
+    : iconBaseUri;
+  
+  // 如果需要深色模式，添加 _dark 后缀
+  const themeSuffix = isDarkMode ? '_dark' : '';
+  // 图标文件扩展名
+  const extension = '.svg';
+  
+  // 构建完整URL
+  return `${baseUri}${themeSuffix}${extension}`;
+};
+
 // 转换API返回的数据格式为组件需要的格式
-const convertCurrentWeather = (data: ApiCurrentWeather): CurrentWeatherType => {
+const convertCurrentWeather = (data: ApiCurrentWeather, isDarkMode: boolean = false): CurrentWeatherType => {
   return {
     observationTime: data.currentTime,
     temperature: {
@@ -142,85 +158,91 @@ const convertCurrentWeather = (data: ApiCurrentWeather): CurrentWeatherType => {
     },
     weatherCondition: {
       text: data.weatherCondition.description.text,
-      icon: data.weatherCondition.iconBaseUri,
+      icon: generateIconUrl(data.weatherCondition.iconBaseUri, isDarkMode),
     },
   };
 };
 
-const convertHourlyForecast = (data: ForecastResponse): HourlyForecastType => {
+const convertHourlyForecast = (data: HourlyForecastResponse, isDarkMode: boolean = false): HourlyForecastType => {
+  // 初始化结果数组
+  const hourlyData: HourDataItem[] = [];
+  
+  // 检查data和data.forecastHours是否存在
+  if (!data || !data.forecastHours || !Array.isArray(data.forecastHours)) {
+    console.log('无效的每小时天气预报数据:', data);
+    return { hours: [] }; // 返回空数组
+  }
+  
+  // 直接使用forecastHours数组
+  for (const hour of data.forecastHours) {
+    // 检查必要的属性是否存在
+    if (!hour.interval || !hour.interval.startTime) {
+      continue;
+    }
+
+    // 获取时间
+    const timeStr = hour.interval.startTime;
+    
+    hourlyData.push({
+      time: timeStr,
+      weatherData: {
+        temperature: {
+          value: hour.temperature.degrees,
+          unit: hour.temperature.unit,
+        },
+        apparentTemperature: {
+          value: hour.feelsLikeTemperature.degrees,
+          unit: hour.feelsLikeTemperature.unit,
+        },
+        humidity: {
+          value: hour.relativeHumidity,
+          unit: '%',
+        },
+        dewPoint: {
+          value: hour.dewPoint.degrees,
+          unit: hour.dewPoint.unit,
+        },
+        windSpeed: {
+          value: hour.wind.speed.value,
+          unit: hour.wind.speed.unit,
+        },
+        windDirection: {
+          value: hour.wind.direction.degrees,
+          unit: 'degrees',
+        },
+        uvIndex: {
+          value: hour.uvIndex,
+        },
+        visibility: {
+          value: hour.visibility.distance,
+          unit: hour.visibility.unit,
+        },
+        pressure: {
+          value: hour.airPressure.meanSeaLevelMillibars,
+          unit: 'mb',
+        },
+        cloudCover: {
+          value: hour.cloudCover,
+          unit: '%',
+        },
+        precipitationProbability: {
+          value: hour.precipitation.probability.percent,
+          unit: '%',
+        },
+      },
+      weatherCondition: {
+        text: hour.weatherCondition.description.text,
+        icon: generateIconUrl(hour.weatherCondition.iconBaseUri, isDarkMode),
+      },
+    });
+  }
+  
   return {
-    hours: data.forecastDays.flatMap(day => {
-      // 将白天和夜晚的预报合并为小时数据
-      const hourData: HourDataItem[] = [];
-      
-      // 简化版本，实际应用中需要根据真实API响应来处理
-      const createHourData = (forecast: DayPartForecast, time: string): HourDataItem => {
-        return {
-          time,
-          weatherData: {
-            temperature: {
-              value: 0, // DayPartForecast没有temperature字段
-              unit: 'CELSIUS',
-            },
-            apparentTemperature: {
-              value: 0, // DayPartForecast没有feelsLikeTemperature字段
-              unit: 'CELSIUS',
-            },
-            humidity: {
-              value: forecast.relativeHumidity,
-              unit: '%',
-            },
-            dewPoint: {
-              value: 0,
-              unit: 'CELSIUS',
-            },
-            windSpeed: {
-              value: forecast.wind.speed.value,
-              unit: forecast.wind.speed.unit,
-            },
-            windDirection: {
-              value: forecast.wind.direction.degrees,
-              unit: 'degrees',
-            },
-            uvIndex: {
-              value: forecast.uvIndex,
-            },
-            visibility: {
-              value: 0,
-              unit: 'km',
-            },
-            pressure: {
-              value: 0,
-              unit: 'mb',
-            },
-            cloudCover: {
-              value: forecast.cloudCover,
-              unit: '%',
-            },
-            precipitationProbability: {
-              value: forecast.precipitation.probability.percent,
-              unit: '%',
-            },
-          },
-          weatherCondition: {
-            text: forecast.weatherCondition.description.text,
-            icon: forecast.weatherCondition.iconBaseUri,
-          },
-        };
-      };
-      
-      // 添加白天小时
-      hourData.push(createHourData(day.daytimeForecast, day.daytimeForecast.interval.startTime));
-      
-      // 添加夜晚小时
-      hourData.push(createHourData(day.nighttimeForecast, day.nighttimeForecast.interval.startTime));
-      
-      return hourData;
-    }),
+    hours: hourlyData
   };
 };
 
-const convertDailyForecast = (data: ForecastResponse): DailyForecastType => {
+const convertDailyForecast = (data: ForecastResponse, isDarkMode: boolean = false): DailyForecastType => {
   return {
     days: data.forecastDays.map(day => {
       return {
@@ -229,7 +251,7 @@ const convertDailyForecast = (data: ForecastResponse): DailyForecastType => {
         sunset: day.sunEvents.sunsetTime,
         weatherCondition: {
           text: day.daytimeForecast.weatherCondition.description.text,
-          icon: day.daytimeForecast.weatherCondition.iconBaseUri,
+          icon: generateIconUrl(day.daytimeForecast.weatherCondition.iconBaseUri, isDarkMode),
         },
         temperatureHigh: {
           value: day.maxTemperature.degrees,
@@ -263,7 +285,7 @@ const convertDailyForecast = (data: ForecastResponse): DailyForecastType => {
   };
 };
 
-const convertHourlyHistory = (data: HourlyHistoryResponse): HourlyHistoryType => {
+const convertHourlyHistory = (data: HourlyHistoryResponse, isDarkMode: boolean = false): HourlyHistoryType => {
   return {
     hours: data.historyHours.map(hour => {
       return {
@@ -315,7 +337,7 @@ const convertHourlyHistory = (data: HourlyHistoryResponse): HourlyHistoryType =>
         },
         weatherCondition: {
           text: hour.weatherCondition.description.text,
-          icon: hour.weatherCondition.iconBaseUri,
+          icon: generateIconUrl(hour.weatherCondition.iconBaseUri, isDarkMode),
         },
       };
     }),
@@ -326,6 +348,7 @@ export default function Home() {
   const [location, setLocation] = useState<LocationData | null>(null);
   const [activeTab, setActiveTab] = useState<string>('current');
   const [loading, setLoading] = useState<boolean>(false);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   
   const [currentWeather, setCurrentWeather] = useState<CurrentWeatherType | null>(null);
   const [hourlyForecast, setHourlyForecast] = useState<HourlyForecastType | null>(null);
@@ -353,7 +376,7 @@ export default function Home() {
     try {
       // 获取当前天气数据
       const currentData = await getCurrentWeather(lat, lng);
-      setCurrentWeather(convertCurrentWeather(currentData));
+      setCurrentWeather(convertCurrentWeather(currentData, isDarkMode));
     } catch (error) {
       console.error('获取当前天气失败:', error);
       handleApiError(error);
@@ -363,17 +386,23 @@ export default function Home() {
     try {
       // 获取每小时预报
       const hourlyData = await getHourlyForecast(lat, lng);
-      setHourlyForecast(convertHourlyForecast(hourlyData));
+      console.log('每小时预报数据:', hourlyData);
+      if (!hourlyData || !hourlyData.forecastHours || !Array.isArray(hourlyData.forecastHours) || hourlyData.forecastHours.length === 0) {
+        console.error('每小时预报数据格式不正确:', hourlyData);
+        setHourlyForecast({ hours: [] });
+      } else {
+        setHourlyForecast(convertHourlyForecast(hourlyData, isDarkMode));
+      }
     } catch (error) {
       console.error('获取每小时预报失败:', error);
       if (!apiError) handleApiError(error);
-      setHourlyForecast(null);
+      setHourlyForecast({ hours: [] });
     }
     
     try {
       // 获取每日预报
       const dailyData = await getDailyForecast(lat, lng);
-      setDailyForecast(convertDailyForecast(dailyData));
+      setDailyForecast(convertDailyForecast(dailyData, isDarkMode));
     } catch (error) {
       console.error('获取每日预报失败:', error);
       if (!apiError) handleApiError(error);
@@ -383,7 +412,7 @@ export default function Home() {
     try {
       // 获取历史数据
       const historyData = await getHourlyHistory(lat, lng);
-      setHourlyHistory(convertHourlyHistory(historyData));
+      setHourlyHistory(convertHourlyHistory(historyData, isDarkMode));
     } catch (error) {
       console.error('获取历史数据失败:', error);
       if (!apiError) handleApiError(error);
@@ -409,6 +438,14 @@ export default function Home() {
     }
   };
 
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+    // 如果有location，重新加载数据以更新图标
+    if (location) {
+      fetchWeatherData(location.lat, location.lng);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       <header className="bg-gradient-to-r from-blue-600 to-blue-400 shadow-md text-white p-6">
@@ -420,7 +457,24 @@ export default function Home() {
             <h1 className="font-bold text-3xl">Google 天气</h1>
           </div>
           
-          <LocationSearch onLocationChange={handleLocationChange} />
+          <div className="flex items-center">
+            <button 
+              onClick={toggleDarkMode}
+              className="p-2 mr-4 bg-white bg-opacity-20 rounded-full"
+              aria-label={isDarkMode ? "切换到亮色模式" : "切换到暗色模式"}
+            >
+              {isDarkMode ? (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+            <LocationSearch onLocationChange={handleLocationChange} />
+          </div>
         </div>
       </header>
       

@@ -274,6 +274,12 @@ export interface ForecastResponse {
     id: string;
   };
 }
+export interface HourlyForecastResponse {
+  forecastHours: HistoryHour[];
+  timeZone: {
+    id: string;
+  };
+}
 
 // 历史天气接口返回类型
 export interface DisplayDateTime extends DisplayDate {
@@ -355,7 +361,7 @@ export const getCurrentWeather = async (lat: number, lng: number): Promise<Curre
  * @param hours 需要获取的小时数
  * @returns 每小时天气预报数据
  */
-export const getHourlyForecast = async (lat: number, lng: number, hours = 24): Promise<ForecastResponse> => {
+export const getHourlyForecast = async (lat: number, lng: number, hours = 24): Promise<HourlyForecastResponse> => {
   try {
     const response = await weatherApi.get(`${BASE_URL}/forecast/hours:lookup`, {
       params: {

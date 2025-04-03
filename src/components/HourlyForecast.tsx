@@ -166,26 +166,30 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
       
       <div className="mt-6 overflow-x-auto">
         <div className="inline-flex gap-4 pb-2">
-          {data.hours.slice(0, 24).map((hour, index) => (
-            <div key={index} className="flex flex-col items-center min-w-16">
-              <span className="text-sm font-medium">
-                {formatTime(hour.time)}
-              </span>
-              {hour.weatherCondition && (
-                <img 
-                  src={hour.weatherCondition.icon} 
-                  alt={hour.weatherCondition.text} 
-                  className="w-10 h-10 my-1"
-                />
-              )}
-              <span className="font-bold">
-                {hour.weatherData.temperature.value}°
-              </span>
-              <span className="text-xs text-gray-500">
-                {hour.weatherData.precipitationProbability.value}%
-              </span>
-            </div>
-          ))}
+          {data && data.hours && data.hours.length > 0 ? (
+            data.hours.slice(0, 24).map((hour, index) => (
+              <div key={index} className="flex flex-col items-center min-w-16">
+                <span className="text-sm font-medium">
+                  {formatTime(hour.time)}
+                </span>
+                {hour.weatherCondition && (
+                  <img 
+                    src={hour.weatherCondition.icon} 
+                    alt={hour.weatherCondition.text} 
+                    className="w-10 h-10 my-1"
+                  />
+                )}
+                <span className="font-bold">
+                  {hour.weatherData.temperature.value}°
+                </span>
+                <span className="text-xs text-gray-500">
+                  {hour.weatherData.precipitationProbability.value}%
+                </span>
+              </div>
+            ))
+          ) : (
+            <div className="text-gray-500 w-full text-center py-4">暂无每小时天气数据</div>
+          )}
         </div>
       </div>
     </div>
