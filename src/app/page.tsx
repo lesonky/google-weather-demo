@@ -22,6 +22,7 @@ import {
   HourlyHistoryResponse,
   ApiError
 } from '@/lib/api';
+import React from 'react';
 
 // 动态导入地图组件，避免SSR问题
 const WeatherMap = dynamic(() => import('@/components/WeatherMap'), {
@@ -111,8 +112,19 @@ const generateIconUrl = (iconBaseUri: string, isDarkMode: boolean = false): stri
   let useDarkTheme = isDarkMode;
   if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     const currentTheme = document.documentElement.getAttribute('data-theme');
-    useDarkTheme = currentTheme === 'dark' || 
-      (currentTheme === null && isDarkMode);
+    // 如果设置了明确的主题，使用该主题
+    if (currentTheme === 'dark') {
+      useDarkTheme = true;
+    } else if (currentTheme === 'light') {
+      useDarkTheme = false;
+    } else if (currentTheme === null) {
+      // 如果没有明确设置主题（自动模式），检查系统颜色方案偏好
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        useDarkTheme = true;
+      } else {
+        useDarkTheme = isDarkMode;
+      }
+    }
   }
   
   // 如果需要深色模式，添加 _dark 后缀
@@ -359,12 +371,21 @@ const convertHourlyHistory = (data: HourlyHistoryResponse, isDarkMode: boolean =
   };
 };
 
+// 定义主题模式枚举
+enum ThemeMode {
+  AUTO = 'auto',
+  LIGHT = 'light',
+  DARK = 'dark'
+}
+
 export default function Home() {
   const [location, setLocation] = useState<LocationData | null>(null);
   const [activeTab, setActiveTab] = useState<string>('current');
   const [loading, setLoading] = useState<boolean>(false);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(ThemeMode.AUTO);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [isMounted, setIsMounted] = useState<boolean>(false);
+  const [themeMenuOpen, setThemeMenuOpen] = useState<boolean>(false);
   
   const [currentWeather, setCurrentWeather] = useState<CurrentWeatherType | null>(null);
   const [hourlyForecast, setHourlyForecast] = useState<HourlyForecastType | null>(null);
@@ -372,26 +393,67 @@ export default function Home() {
   const [hourlyHistory, setHourlyHistory] = useState<HourlyHistoryType | null>(null);
   const [apiError, setApiError] = useState<Error | ApiError | null>(null);
   
-  // 组件挂载后设置isMounted为true
+  const themeMenuRef = React.useRef<HTMLDivElement>(null);
+  const themeButtonRef = React.useRef<HTMLButtonElement>(null);
+  
+  // 组件挂载后设置isMounted为true并从本地存储恢复主题设置
   useEffect(() => {
     setIsMounted(true);
+    
+    // 从localStorage恢复主题设置
+    if (typeof window !== 'undefined') {
+      const savedThemeMode = localStorage.getItem('themeMode');
+      if (savedThemeMode) {
+        try {
+          const parsedThemeMode = savedThemeMode as ThemeMode;
+          if (Object.values(ThemeMode).includes(parsedThemeMode)) {
+            setThemeMode(parsedThemeMode);
+          }
+        } catch (e) {
+          console.error('无法解析保存的主题模式:', e);
+        }
+      }
+    }
   }, []);
   
-  // 在组件挂载时检查系统主题
+  // 将主题设置保存到本地存储
+  useEffect(() => {
+    if (isMounted && typeof window !== 'undefined') {
+      localStorage.setItem('themeMode', themeMode);
+    }
+  }, [themeMode, isMounted]);
+  
+  // 在组件挂载时检查系统主题并监听系统主题变化
   useEffect(() => {
     if (typeof window !== 'undefined' && window.matchMedia) {
       const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      setIsDarkMode(darkModeMediaQuery.matches);
+      
+      // 如果是自动模式，则使用系统主题
+      if (themeMode === ThemeMode.AUTO) {
+        setIsDarkMode(darkModeMediaQuery.matches);
+      }
       
       // 监听系统主题变化
       const handleChange = (e: MediaQueryListEvent) => {
-        setIsDarkMode(e.matches);
+        if (themeMode === ThemeMode.AUTO) {
+          setIsDarkMode(e.matches);
+        }
       };
       
       darkModeMediaQuery.addEventListener('change', handleChange);
       return () => darkModeMediaQuery.removeEventListener('change', handleChange);
     }
-  }, []);
+  }, [themeMode]);
+  
+  // 根据themeMode状态更新isDarkMode
+  useEffect(() => {
+    if (themeMode === ThemeMode.LIGHT) {
+      setIsDarkMode(false);
+    } else if (themeMode === ThemeMode.DARK) {
+      setIsDarkMode(true);
+    }
+    // 如果是AUTO，已在系统主题检测中处理
+  }, [themeMode]);
   
   // 应用当前主题到文档
   useEffect(() => {
@@ -463,6 +525,36 @@ export default function Home() {
       }
     }
   }, [isDarkMode, isMounted]);
+  
+  // 点击外部关闭下拉菜单
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        themeMenuRef.current && 
+        themeButtonRef.current &&
+        !themeMenuRef.current.contains(event.target as Node) &&
+        !themeButtonRef.current.contains(event.target as Node)
+      ) {
+        setThemeMenuOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+  
+  // 处理主题菜单切换
+  const toggleThemeMenu = () => {
+    setThemeMenuOpen(!themeMenuOpen);
+  };
+  
+  // 处理主题选择
+  const handleThemeSelect = (mode: ThemeMode) => {
+    setThemeMode(mode);
+    setThemeMenuOpen(false);
+  };
   
   // 处理和分类错误
   const handleApiError = (error: unknown): void => {
@@ -546,10 +638,6 @@ export default function Home() {
     }
   };
 
-  const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-  };
-
   return (
     <div className="flex flex-col min-h-screen" style={{ background: 'var(--main-bg)' }}>
       <header 
@@ -568,22 +656,130 @@ export default function Home() {
           
           <div className="flex mt-4 items-center md:mt-0">
             {isMounted && (
-              <button 
-                onClick={toggleDarkMode}
-                className="mr-4 dark-mode-toggle"
-                aria-label={isDarkMode ? "切换到亮色模式" : "切换到暗色模式"}
-                title={isDarkMode ? "切换到亮色模式" : "切换到暗色模式"}
-              >
-                {isDarkMode ? (
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                ) : (
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                  </svg>
-                )}
-              </button>
+              <div className="flex items-center relative">
+                <button 
+                  ref={themeButtonRef}
+                  onClick={toggleThemeMenu}
+                  className="dark-mode-toggle relative"
+                  aria-label="切换主题选项"
+                  title={themeMode === ThemeMode.AUTO 
+                    ? "跟随系统" 
+                    : themeMode === ThemeMode.LIGHT 
+                      ? "亮色模式" 
+                      : "暗色模式"
+                  }
+                >
+                  {themeMode === ThemeMode.AUTO ? (
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                    </svg>
+                  ) : isDarkMode ? (
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                  ) : (
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  )}
+                  <div 
+                    className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full flex items-center justify-center transition-transform duration-200 ${themeMenuOpen ? 'transform rotate-180' : ''}`}
+                    style={{ 
+                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(66, 133, 244, 0.2)',
+                    }}
+                  >
+                    <svg 
+                      className="h-2 w-2"
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24" 
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
+                
+                {/* 主题选择下拉菜单 */}
+                <div 
+                  ref={themeMenuRef}
+                  className={`absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-10 transition-all duration-200 transform ${
+                    themeMenuOpen 
+                      ? 'opacity-100 translate-y-0' 
+                      : 'opacity-0 translate-y-[-10px] invisible'
+                  }`}
+                  style={{ background: 'var(--card-background)' }}
+                >
+                  {/* 添加小三角形指示器 */}
+                  <div 
+                    className="absolute right-4 -top-2 w-4 h-4 rotate-45 transform"
+                    style={{ background: 'var(--card-background)' }}
+                  ></div>
+                  
+                  <div className="py-1 relative" role="menu" aria-orientation="vertical">
+                    <button
+                      className={`w-full text-left px-4 py-2 text-sm ${
+                        themeMode === ThemeMode.AUTO 
+                          ? 'font-medium' 
+                          : ''
+                      } hover:bg-opacity-10 transition-colors duration-150`}
+                      role="menuitem"
+                      onClick={() => handleThemeSelect(ThemeMode.AUTO)}
+                      style={{ 
+                        backgroundColor: themeMode === ThemeMode.AUTO ? 'var(--tab-active)' : 'transparent',
+                        color: themeMode === ThemeMode.AUTO ? '#ffffff' : 'var(--foreground)'
+                      }}
+                    >
+                      <div className="flex items-center">
+                        <svg className="h-4 w-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                        </svg>
+                        跟随系统
+                      </div>
+                    </button>
+                    <button
+                      className={`w-full text-left px-4 py-2 text-sm ${
+                        themeMode === ThemeMode.LIGHT 
+                          ? 'font-medium' 
+                          : ''
+                      } hover:bg-opacity-10 transition-colors duration-150`}
+                      role="menuitem"
+                      onClick={() => handleThemeSelect(ThemeMode.LIGHT)}
+                      style={{ 
+                        backgroundColor: themeMode === ThemeMode.LIGHT ? 'var(--tab-active)' : 'transparent',
+                        color: themeMode === ThemeMode.LIGHT ? '#ffffff' : 'var(--foreground)'
+                      }}
+                    >
+                      <div className="flex items-center">
+                        <svg className="h-4 w-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        亮色模式
+                      </div>
+                    </button>
+                    <button
+                      className={`w-full text-left px-4 py-2 text-sm ${
+                        themeMode === ThemeMode.DARK 
+                          ? 'font-medium' 
+                          : ''
+                      } hover:bg-opacity-10 transition-colors duration-150`}
+                      role="menuitem"
+                      onClick={() => handleThemeSelect(ThemeMode.DARK)}
+                      style={{ 
+                        backgroundColor: themeMode === ThemeMode.DARK ? 'var(--tab-active)' : 'transparent',
+                        color: themeMode === ThemeMode.DARK ? '#ffffff' : 'var(--foreground)'
+                      }}
+                    >
+                      <div className="flex items-center">
+                        <svg className="h-4 w-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                        暗色模式
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
