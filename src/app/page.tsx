@@ -380,7 +380,7 @@ enum ThemeMode {
 
 export default function Home() {
   const [location, setLocation] = useState<LocationData | null>(null);
-  const [activeTab, setActiveTab] = useState<string>('current');
+  const [activeTab, setActiveTab] = useState<string>('hourly');
   const [loading, setLoading] = useState<boolean>(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(ThemeMode.AUTO);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
@@ -823,20 +823,6 @@ export default function Home() {
               <div className="border-b flex overflow-x-auto">
                 <button
                   className={`py-2 px-4 font-medium whitespace-nowrap ${
-                    activeTab === 'current' 
-                      ? 'border-b-2' 
-                      : ''
-                  }`}
-                  style={{ 
-                    color: activeTab === 'current' ? 'var(--tab-active)' : 'var(--tab-inactive)',
-                    borderColor: activeTab === 'current' ? 'var(--tab-border)' : 'transparent' 
-                  }}
-                  onClick={() => setActiveTab('current')}
-                >
-                  当前
-                </button>
-                <button
-                  className={`py-2 px-4 font-medium whitespace-nowrap ${
                     activeTab === 'hourly' 
                       ? 'border-b-2' 
                       : ''
@@ -880,7 +866,6 @@ export default function Home() {
               </div>
               
               <div className="mt-4">
-                {activeTab === 'current' && <CurrentWeather data={currentWeather} isLoading={loading} />}
                 {activeTab === 'hourly' && <HourlyForecast data={hourlyForecast} isLoading={loading} />}
                 {activeTab === 'daily' && <DailyForecast data={dailyForecast} isLoading={loading} />}
                 {activeTab === 'history' && <HourlyHistory data={hourlyHistory} isLoading={loading} />}
