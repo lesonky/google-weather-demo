@@ -48,12 +48,10 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
 
   const handleSelectRecentSearch = (term: string) => {
     setAddress(term);
-    setTimeout(() => {
-      if (formRef.current) {
-        const event = new Event('submit', { cancelable: true });
-        formRef.current.dispatchEvent(event);
-      }
-    }, 10);
+    if (formRef.current) {
+      const event = new Event('submit', { cancelable: true });
+      formRef.current.dispatchEvent(event);
+    }
     setShowRecentSearches(false);
   };
 
@@ -107,7 +105,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="输入城市或地址..."
-              className="w-full py-3 px-4 rounded-l-full focus:outline-none focus:ring-2 focus:ring-google-blue"
+              className={`w-full py-3 px-4 rounded-l-full focus:outline-none focus:ring-2 focus:ring-google-blue ${isLoading ? 'opacity-70' : ''}`}
               style={{ 
                 border: '1px solid var(--search-border)',
                 borderRight: 'none',
@@ -117,6 +115,12 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
               }}
               disabled={isLoading}
             />
+            {isLoading && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-t-transparent"
+                     style={{ borderColor: 'var(--tab-inactive)', borderTopColor: 'transparent' }}></div>
+              </div>
+            )}
           </div>
 
           {recentSearches.length > 0 && (
@@ -124,7 +128,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
               type="button"
               ref={recentButtonRef}
               onClick={toggleRecentSearches}
-              className="py-3 px-3 border-y border-l"
+              className={`py-3 px-3 border-y border-l ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
               style={{ 
                 borderColor: 'var(--search-border)', 
                 background: 'var(--card-background)',
@@ -140,14 +144,20 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recen
 
           <button
             type="submit"
-            className="rounded-r-full text-white py-2 px-5 transition hover:bg-opacity-90"
+            className={`rounded-r-full text-white py-2 px-5 transition hover:bg-opacity-90 ${isLoading ? 'opacity-70 cursor-wait' : ''}`}
             style={{ background: 'var(--header-bg-from)' }}
             disabled={isLoading}
           >
-            {isLoading ? '搜索中...' : '搜索'}
+            {isLoading ? (
+              <div className="flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-t-transparent mr-2"
+                     style={{ borderColor: 'white', borderTopColor: 'transparent' }}></div>
+                <span>搜索中</span>
+              </div>
+            ) : '搜索'}
           </button>
           
-          {showRecentSearches && recentSearches.length > 0 && (
+          {showRecentSearches && recentSearches.length > 0 && !isLoading && (
             <div 
               ref={recentSearchesRef}
               className="absolute top-full mt-1 right-0 w-48 rounded-md border shadow-lg z-10"

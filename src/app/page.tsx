@@ -770,6 +770,7 @@ export default function Home() {
   
   const handleLocationChange = async (newLocation: LocationData) => {
     setLocation(newLocation);
+    setLoading(true); // 明确设置loading状态为true
     try {
       await fetchWeatherData(newLocation.lat, newLocation.lng);
     } catch (error) {
