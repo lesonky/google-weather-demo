@@ -90,22 +90,22 @@ const DailyForecast: React.FC<DailyForecastProps> = ({ data, isLoading }) => {
           );
           
           return (
-            <div key={index} className="py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="flex flex-col">
-                    <span className="font-bold">{formatDate(day.date)}</span>
-                    {index === 0 && <span className="text-xs text-blue-500">今天</span>}
+            <div key={index} className="py-5 first:pt-2 last:pb-2">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-3 flex-1">
+                  <div className="flex flex-col min-w-[80px]">
+                    <span className="text-lg font-medium">{formatDate(day.date)}</span>
+                    {index === 0 && <span className="text-xs text-blue-500 mt-0.5">今天</span>}
                   </div>
                   {day.weatherCondition && (
-                    <div className="flex flex-col items-center">
+                    <div className="flex items-center space-x-2">
                       <img 
                         src={day.weatherCondition.icon} 
                         alt={day.weatherCondition.text} 
-                        className="w-12 h-12"
+                        className="w-10 h-10"
                       />
                       <span 
-                        className="text-xs text-center mt-1"
+                        className="text-sm"
                         style={{ color: weatherType ? getWeatherTypeColor(weatherType) : 'inherit' }}
                       >
                         {day.weatherCondition.typeText || day.weatherCondition.text}
@@ -114,9 +114,9 @@ const DailyForecast: React.FC<DailyForecastProps> = ({ data, isLoading }) => {
                   )}
                 </div>
                 
-                <div className="text-right">
+                <div className="text-right flex flex-col items-end ml-2">
                   <div className="flex items-center space-x-2">
-                    <span className="font-bold">{formatTemperature(day.temperatureHigh.value, day.temperatureHigh.unit)}</span>
+                    <span className="text-base text-blue-500">{formatTemperature(day.temperatureLow.value, day.temperatureLow.unit)}</span>
                     <div className="w-20 h-2 bg-gray-200 dark:bg-gray-700 rounded-full relative">
                       <div 
                         className="h-2 bg-gradient-to-r from-blue-500 to-red-500 rounded-full absolute"
@@ -126,31 +126,34 @@ const DailyForecast: React.FC<DailyForecastProps> = ({ data, isLoading }) => {
                         }}
                       ></div>
                     </div>
-                    <span className="text-gray-500 dark:text-gray-400">{formatTemperature(day.temperatureLow.value, day.temperatureLow.unit)}</span>
+                    <span className="text-lg font-medium text-red-500">{formatTemperature(day.temperatureHigh.value, day.temperatureHigh.unit)}</span>
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    最低温/最高温
                   </div>
                 </div>
               </div>
               
               {index === 0 && activitySuggestion && (
-                <div className="mt-2 mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs">
+                <div className="mb-3 p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded text-sm">
                   <span className="font-medium">今日建议：</span> {activitySuggestion}
                 </div>
               )}
               
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-4 mt-1">
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">日出</span>
-                  <span className="text-sm">{formatTime(day.sunrise)}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">日出</span>
+                  <span className="text-sm font-medium">{formatTime(day.sunrise)}</span>
                 </div>
                 
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">日落</span>
-                  <span className="text-sm">{formatTime(day.sunset)}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">日落</span>
+                  <span className="text-sm font-medium">{formatTime(day.sunset)}</span>
                 </div>
                 
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">降水概率</span>
-                  <span className="text-sm flex items-center">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">降水概率</span>
+                  <span className="text-sm font-medium flex items-center">
                     {day.precipitationProbability.value}%
                     <span className="ml-1 text-xs text-gray-500">
                       ({precipitationDesc})
@@ -159,20 +162,20 @@ const DailyForecast: React.FC<DailyForecastProps> = ({ data, isLoading }) => {
                 </div>
                 
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">风向/风速</span>
-                  <span className="text-sm">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">风向/风速</span>
+                  <span className="text-sm font-medium">
                     {day.windDirection?.text || ''} {formatWindSpeed(day.windSpeed.value, day.windSpeed.unit)}
                   </span>
                 </div>
                 
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">湿度</span>
-                  <span className="text-sm">{day.humidity.value}%</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">湿度</span>
+                  <span className="text-sm font-medium">{day.humidity.value}%</span>
                 </div>
                 
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">紫外线</span>
-                  <span className="text-sm flex items-center">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">紫外线</span>
+                  <span className="text-sm font-medium flex items-center">
                     {day.uvIndex.value}
                     <span 
                       className="ml-1 text-xs px-1 py-0.5 rounded" 
@@ -187,13 +190,13 @@ const DailyForecast: React.FC<DailyForecastProps> = ({ data, isLoading }) => {
                 </div>
                 
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">降水量</span>
-                  <span className="text-sm">{formatPrecipitation(day.precipitationAmount.value, day.precipitationAmount.unit)}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">降水量</span>
+                  <span className="text-sm font-medium">{formatPrecipitation(day.precipitationAmount.value, day.precipitationAmount.unit)}</span>
                 </div>
                 
                 <div className="flex flex-col">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">降水类型</span>
-                  <span className="text-sm">{
+                  <span className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">降水类型</span>
+                  <span className="text-sm font-medium">{
                     day.precipitationProbability.type ? 
                       day.precipitationProbability.type === 'RAIN' ? '雨' : 
                       day.precipitationProbability.type === 'SNOW' ? '雪' : 

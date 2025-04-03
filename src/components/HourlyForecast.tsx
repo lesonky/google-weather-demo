@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Chart as ChartJS, 
   CategoryScale, 
@@ -8,7 +8,10 @@ import {
   Title, 
   Tooltip, 
   Legend,
-  Filler
+  Filler,
+  ChartEvent,
+  ActiveElement,
+  ScriptableContext
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { HourlyForecast as HourlyForecastType } from '@/types/weather';
@@ -38,6 +41,45 @@ interface HourlyForecastProps {
 
 const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
   const [selectedMetric, setSelectedMetric] = useState<string>('temperature');
+  const [highlightedHourIndex, setHighlightedHourIndex] = useState<number | null>(null);
+  const hourItemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
+  // 当高亮小时索引变化时，滚动到对应项
+  useEffect(() => {
+    if (highlightedHourIndex !== null && hourItemRefs.current[highlightedHourIndex] && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const element = hourItemRefs.current[highlightedHourIndex];
+      
+      if (element) {
+        // 计算需要滚动的位置
+        const elementRect = element.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        
+        // 检查元素是否在可视区域外
+        const isInView = (
+          elementRect.left >= containerRect.left &&
+          elementRect.right <= containerRect.right
+        );
+        
+        if (!isInView) {
+          // 自动滚动到元素位置，使其在容器中可见
+          const scrollLeft = element.offsetLeft - container.offsetLeft - (containerRect.width / 2) + (elementRect.width / 2);
+          container.scrollTo({
+            left: scrollLeft,
+            behavior: 'smooth'
+          });
+        }
+      }
+    }
+  }, [highlightedHourIndex]);
+
+  // 初始化 refs 数组
+  useEffect(() => {
+    if (data && data.hours) {
+      hourItemRefs.current = Array(data.hours.length).fill(null);
+    }
+  }, [data]);
   
   const metricOptions = [
     { id: 'temperature', label: '温度' },
@@ -74,22 +116,22 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
       case 'temperature':
         chartData = data.hours.map(hour => hour.weatherData.temperature.value);
         label = '温度 (°C)';
-        color = 'rgba(255, 99, 132, 1)';
+        color = 'rgba(66, 133, 244, 1)';
         break;
       case 'precipitationProbability':
         chartData = data.hours.map(hour => hour.weatherData.precipitationProbability.value);
         label = '降水概率 (%)';
-        color = 'rgba(53, 162, 235, 1)';
+        color = 'rgba(52, 168, 83, 1)';
         break;
       case 'humidity':
         chartData = data.hours.map(hour => hour.weatherData.humidity.value);
         label = '湿度 (%)';
-        color = 'rgba(75, 192, 192, 1)';
+        color = 'rgba(234, 67, 53, 1)';
         break;
       case 'windSpeed':
         chartData = data.hours.map(hour => hour.weatherData.windSpeed.value);
         label = '风速 (km/h)';
-        color = 'rgba(255, 206, 86, 1)';
+        color = 'rgba(251, 188, 5, 1)';
         break;
       default:
         break;
@@ -102,28 +144,117 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
           label,
           data: chartData,
           borderColor: color,
-          backgroundColor: `${color.slice(0, -2)}0.1)`,
+          backgroundColor: `${color.slice(0, -2)}0.2)`,
           fill: true,
           tension: 0.4,
+          pointRadius: (ctx: ScriptableContext<'line'>) => {
+            const index = ctx.dataIndex;
+            return index === highlightedHourIndex ? 6 : 3;
+          },
+          pointHoverRadius: 8,
+          pointBackgroundColor: (ctx: ScriptableContext<'line'>) => {
+            const index = ctx.dataIndex;
+            return index === highlightedHourIndex ? color : 'white';
+          },
+          pointBorderColor: color,
+          pointBorderWidth: 2,
         },
       ],
     };
   };
   
+  // 根据暗色主题调整颜色
+  const isDarkMode = typeof window !== 'undefined' && 
+    window.matchMedia && 
+    window.matchMedia('(prefers-color-scheme: dark)').matches;
+  
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'top' as const,
+        labels: {
+          font: {
+            family: 'Roboto, "Helvetica Neue", Arial, sans-serif',
+            size: 12
+          },
+          color: isDarkMode ? '#e8eaed' : '#5f6368'
+        }
       },
       title: {
         display: true,
         text: '24小时天气预报',
+        font: {
+          family: 'Roboto, "Helvetica Neue", Arial, sans-serif',
+          size: 16,
+          weight: 'normal' as const
+        },
+        color: isDarkMode ? '#ffffff' : '#202124'
       },
+      tooltip: {
+        mode: 'index' as const,
+        intersect: false,
+        backgroundColor: isDarkMode ? 'rgba(32, 33, 36, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        titleColor: isDarkMode ? '#ffffff' : '#202124',
+        bodyColor: isDarkMode ? '#e8eaed' : '#5f6368',
+        borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+        borderWidth: 1,
+        titleFont: {
+          family: 'Roboto, "Helvetica Neue", Arial, sans-serif',
+          size: 14,
+          weight: 'bold' as const
+        },
+        bodyFont: {
+          family: 'Roboto, "Helvetica Neue", Arial, sans-serif',
+          size: 14
+        },
+        padding: 12,
+        displayColors: true,
+        boxShadow: isDarkMode ? 
+          '0 2px 5px 0 rgba(0, 0, 0, 0.5), 0 2px 10px 0 rgba(0, 0, 0, 0.5)' :
+          '0 2px 5px 0 rgba(0, 0, 0, 0.16), 0 2px 10px 0 rgba(0, 0, 0, 0.12)'
+      }
     },
     scales: {
       y: {
         beginAtZero: selectedMetric === 'precipitationProbability' || selectedMetric === 'humidity',
+        grid: {
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)'
+        },
+        ticks: {
+          color: isDarkMode ? '#e8eaed' : '#5f6368',
+          font: {
+            family: 'Roboto, "Helvetica Neue", Arial, sans-serif'
+          }
+        }
+      },
+      x: {
+        grid: {
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)'
+        },
+        ticks: {
+          color: isDarkMode ? '#e8eaed' : '#5f6368',
+          font: {
+            family: 'Roboto, "Helvetica Neue", Arial, sans-serif'
+          }
+        }
+      }
+    },
+    interaction: {
+      mode: 'nearest' as const,
+      axis: 'x' as const,
+      intersect: false
+    },
+    hover: {
+      mode: 'nearest' as const,
+      intersect: false
+    },
+    onHover: (event: ChartEvent, elements: ActiveElement[]) => {
+      if (elements && elements.length > 0) {
+        setHighlightedHourIndex(elements[0].index);
+      } else {
+        setHighlightedHourIndex(null);
       }
     }
   };
@@ -143,27 +274,33 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
     }
   };
   
+  const getItemClassName = (index: number) => {
+    return `flex flex-col items-center min-w-16 py-2 rounded-lg transition-all duration-200 ${
+      index === highlightedHourIndex ? 'bg-blue-50 dark:bg-blue-900/30 shadow-md transform scale-105' : ''
+    }`;
+  };
+  
   if (isLoading) {
     return (
-      <div className="p-6 bg-card-background rounded-lg shadow-md animate-pulse">
-        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-4"></div>
-        <div className="h-48 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+      <div className="bg-card-background rounded-lg shadow-md p-6 animate-pulse">
+        <div className="rounded bg-gray-200 h-6 mb-4 w-1/2 dark:bg-gray-700"></div>
+        <div className="rounded bg-gray-200 h-48 w-full dark:bg-gray-700"></div>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="p-6 bg-card-background rounded-lg shadow-md">
+      <div className="bg-card-background rounded-lg shadow-md p-6">
         <p className="text-gray-500 dark:text-gray-400">请选择一个位置查看每小时天气预报</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-card-background rounded-lg shadow-md">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">每小时天气预报</h2>
+    <div className="bg-card-background rounded-lg shadow-md p-6">
+      <div className="flex mb-4 justify-between items-center">
+        <h2 className="font-bold text-2xl">每小时天气预报</h2>
         <div className="flex gap-2">
           {metricOptions.map(option => (
             <button
@@ -181,27 +318,38 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
         </div>
       </div>
       
-      <div className="h-[300px]">
-        <Line options={chartOptions} data={prepareChartData()} />
+      <div className="h-[300px] w-full">
+        <Line 
+          options={chartOptions} 
+          data={prepareChartData()} 
+        />
       </div>
       
-      <div className="mt-6 overflow-x-auto">
-        <div className="inline-flex gap-4 pb-2">
+      <div className="mt-6 overflow-x-auto" ref={scrollContainerRef}>
+        <div className="pb-2 gap-4 inline-flex">
           {data && data.hours && data.hours.length > 0 ? (
             data.hours.slice(0, 24).map((hour, index) => {
               const weatherType = hour.weatherCondition.type || '';
               const precipProbability = hour.weatherData.precipitationProbability.value;
               return (
-                <div key={index} className="flex flex-col items-center min-w-16">
-                  <span className="text-sm font-medium">
+                <div 
+                  key={index} 
+                  className={getItemClassName(index)}
+                  onMouseEnter={() => setHighlightedHourIndex(index)}
+                  onMouseLeave={() => setHighlightedHourIndex(null)}
+                  ref={el => {
+                    hourItemRefs.current[index] = el;
+                  }}
+                >
+                  <span className="font-medium text-sm">
                     {formatTime(hour.time)}
                   </span>
                   {hour.weatherCondition && (
-                    <div className="my-1 flex flex-col items-center">
+                    <div className="flex flex-col my-1 items-center">
                       <img 
                         src={hour.weatherCondition.icon} 
                         alt={hour.weatherCondition.text} 
-                        className="w-10 h-10"
+                        className="h-10 w-10"
                       />
                       <span className="text-xs text-center" style={{ 
                         color: weatherType ? getWeatherTypeColor(weatherType) : 'inherit'
@@ -227,7 +375,7 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
               );
             })
           ) : (
-            <div className="text-gray-500 dark:text-gray-400 w-full text-center py-4">暂无每小时天气数据</div>
+            <div className="text-center w-full py-4 text-gray-500 dark:text-gray-400">暂无每小时天气数据</div>
           )}
         </div>
       </div>

@@ -4,13 +4,15 @@ import { LocationData } from '@/types/weather';
 
 interface LocationSearchProps {
   onLocationChange: (location: LocationData) => void;
+  recentSearches?: string[];
 }
 
-const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange }) => {
+const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange, recentSearches = [] }) => {
   const [address, setAddress] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLocationError, setIsLocationError] = useState(false);
+  const [showRecentSearches, setShowRecentSearches] = useState(false);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +43,14 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange }) => 
     }
   };
 
+  const handleSelectRecentSearch = (term: string) => {
+    setAddress(term);
+    setTimeout(() => {
+      handleSearch({ preventDefault: () => {} } as React.FormEvent);
+    }, 0);
+    setShowRecentSearches(false);
+  };
+
   return (
     <div className="w-full">
       <form onSubmit={handleSearch} className="flex flex-col gap-2">
@@ -49,6 +59,8 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange }) => 
             type="text"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
+            onFocus={() => recentSearches.length > 0 && setShowRecentSearches(true)}
+            onBlur={() => setTimeout(() => setShowRecentSearches(false), 200)}
             placeholder="输入城市或地址..."
             className="w-full py-3 px-4 rounded-full focus:outline-none focus:ring-2 focus:ring-google-blue"
             style={{ 
@@ -67,6 +79,27 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onLocationChange }) => 
           >
             {isLoading ? '搜索中...' : '搜索'}
           </button>
+          
+          {showRecentSearches && recentSearches.length > 0 && (
+            <div className="absolute top-full mt-1 w-full rounded-md border shadow-lg z-10"
+                 style={{ background: 'var(--card-background)', border: '1px solid var(--search-border)' }}>
+              <div className="py-1">
+                <div className="px-3 py-2 text-xs font-medium" style={{ color: 'var(--tab-inactive)' }}>
+                  最近搜索
+                </div>
+                {recentSearches.map((term, index) => (
+                  <div
+                    key={index}
+                    className="px-3 py-2 cursor-pointer hover:bg-opacity-10 transition-colors duration-150"
+                    style={{ background: 'transparent', color: 'var(--foreground)' }}
+                    onClick={() => handleSelectRecentSearch(term)}
+                  >
+                    {term}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         {error && (
           <div className={`${isLocationError ? 'p-3 rounded-md' : ''}`} style={{

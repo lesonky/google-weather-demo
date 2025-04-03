@@ -109,8 +109,41 @@ body {
   flex-direction: column;
 }
 
+/* 固定顶部header样式 */
+.fixed-header {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
+  transition: box-shadow 0.3s ease;
+}
+
+/* 添加滚动时的阴影效果 */
+.fixed-header-shadow {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+}
+
+/* 固定底部footer样式 */
+.fixed-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 为固定底部footer添加页面内容的底部内边距 */
+.footer-spacer {
+  height: 80px; /* 根据footer高度调整 */
+}
+
 main {
   flex: 1;
+  padding-bottom: 80px; /* 为固定的footer腾出空间 */
 }
 
 .dark-mode-toggle {

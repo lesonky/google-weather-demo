@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import LocationSearch from '@/components/LocationSearch';
 import ErrorDisplay from '@/components/ErrorDisplay';
@@ -44,6 +44,39 @@ const CurrentWeather = dynamic(() => import('@/components/CurrentWeather'));
 const HourlyForecast = dynamic(() => import('@/components/HourlyForecast'));
 const DailyForecast = dynamic(() => import('@/components/DailyForecast'));
 const HourlyHistory = dynamic(() => import('@/components/HourlyHistory'));
+
+// 添加Geocoding API结果的接口
+interface GeocodeResult {
+  formatted_address: string;
+  types: string[];
+  geometry: {
+    location: {
+      lat: number;
+      lng: number;
+    };
+    viewport: {
+      northeast: {
+        lat: number;
+        lng: number;
+      };
+      southwest: {
+        lat: number;
+        lng: number;
+      };
+    };
+  };
+  place_id: string;
+  address_components: Array<{
+    long_name: string;
+    short_name: string;
+    types: string[];
+  }>;
+}
+
+interface GeocodeResponse {
+  results: GeocodeResult[];
+  status: string;
+}
 
 // 生成完整的图标URL
 const generateIconUrl = (iconBaseUri: string, isDarkMode: boolean = false): string => {
@@ -396,7 +429,10 @@ export default function Home() {
   const themeMenuRef = React.useRef<HTMLDivElement>(null);
   const themeButtonRef = React.useRef<HTMLButtonElement>(null);
   
-  // 组件挂载后设置isMounted为true并从本地存储恢复主题设置
+  const [headerShadow, setHeaderShadow] = useState<boolean>(false);
+  
+  const [searchTerms, setSearchTerms] = useState<string[]>([]);
+  
   useEffect(() => {
     setIsMounted(true);
     
@@ -413,8 +449,171 @@ export default function Home() {
           console.error('无法解析保存的主题模式:', e);
         }
       }
+      
+      // 恢复保存的搜索记录
+      const savedSearchTerms = localStorage.getItem('searchTerms');
+      if (savedSearchTerms) {
+        try {
+          setSearchTerms(JSON.parse(savedSearchTerms));
+        } catch (e) {
+          console.error('无法解析保存的搜索记录:', e);
+        }
+      }
     }
   }, []);
+
+  // 获取天气数据的函数
+  const fetchWeatherData = useCallback(async (lat: number, lng: number) => {
+    setLoading(true);
+    setApiError(null);
+    
+    try {
+      // 获取当前天气数据
+      const currentData = await getCurrentWeather(lat, lng);
+      setCurrentWeather(convertCurrentWeather(currentData, isDarkMode));
+      
+      // 更新最近搜索的位置
+      if (location?.address) {
+        // 创建新的搜索词数组而不依赖当前的 searchTerms 状态
+        const currentTerms = localStorage.getItem('searchTerms') ? 
+          JSON.parse(localStorage.getItem('searchTerms') || '[]') : [];
+        const updatedTerms = [location.address, ...currentTerms.filter((term: string) => term !== location.address)].slice(0, 5);
+        setSearchTerms(updatedTerms);
+        localStorage.setItem('searchTerms', JSON.stringify(updatedTerms));
+      }
+    } catch (error) {
+      console.error('获取当前天气失败:', error);
+      handleApiError(error);
+      setCurrentWeather(null);
+    }
+    
+    try {
+      // 获取每小时预报
+      const hourlyData = await getHourlyForecast(lat, lng);
+      console.log('每小时预报数据:', hourlyData);
+      if (!hourlyData || !hourlyData.forecastHours || !Array.isArray(hourlyData.forecastHours) || hourlyData.forecastHours.length === 0) {
+        console.error('每小时预报数据格式不正确:', hourlyData);
+        setHourlyForecast({ hours: [] });
+      } else {
+        setHourlyForecast(convertHourlyForecast(hourlyData, isDarkMode));
+      }
+    } catch (error) {
+      console.error('获取每小时预报失败:', error);
+      if (!apiError) handleApiError(error);
+      setHourlyForecast({ hours: [] });
+    }
+    
+    try {
+      // 获取每日预报
+      const dailyData = await getDailyForecast(lat, lng);
+      setDailyForecast(convertDailyForecast(dailyData, isDarkMode));
+    } catch (error) {
+      console.error('获取每日预报失败:', error);
+      if (!apiError) handleApiError(error);
+      setDailyForecast(null);
+    }
+    
+    try {
+      // 获取历史数据
+      const historyData = await getHourlyHistory(lat, lng);
+      setHourlyHistory(convertHourlyHistory(historyData, isDarkMode));
+    } catch (error) {
+      console.error('获取历史数据失败:', error);
+      if (!apiError) handleApiError(error);
+      setHourlyHistory(null);
+    }
+    
+    setLoading(false);
+  }, [apiError, isDarkMode, location]);
+  
+  // 获取用户地理位置并初始化数据
+  useEffect(() => {
+    if (!isMounted) return;
+
+    // 尝试从存储中恢复上次位置
+    const savedLocation = localStorage.getItem('lastLocation');
+    if (savedLocation) {
+      try {
+        const locationData = JSON.parse(savedLocation) as LocationData;
+        setLocation(locationData);
+        // 不在这里直接调用 fetchWeatherData，而是通过 location 变化触发
+        return; // 如果成功恢复位置，则不需要请求地理位置
+      } catch (e) {
+        console.error('无法解析保存的位置:', e);
+        // 继续尝试获取当前位置
+      }
+    }
+
+    // 获取用户当前位置
+    if (navigator.geolocation) {
+      setLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          
+          // 尝试获取位置名称
+          try {
+            // 使用Google Maps Geocoding API
+            const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`;
+            const response = await fetch(geocodeUrl);
+            const data = await response.json() as GeocodeResponse;
+            
+            let address = '';
+            if (data.results && data.results.length > 0) {
+              // 尝试获取城市名称
+              const locality = data.results.find(result => result.types.includes('locality'));
+              if (locality) {
+                address = locality.formatted_address;
+              } else {
+                // 否则使用第一个结果
+                address = data.results[0].formatted_address;
+              }
+            }
+            
+            const locationData: LocationData = {
+              lat,
+              lng,
+              address: address || `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+            };
+            
+            // 保存位置到本地存储
+            localStorage.setItem('lastLocation', JSON.stringify(locationData));
+            
+            setLocation(locationData);
+            // 不在这里直接调用 fetchWeatherData，而是通过 location 变化触发
+          } catch (error) {
+            console.error('获取位置名称失败:', error);
+            // 即使获取位置名称失败，仍然使用坐标获取天气
+            const locationData: LocationData = {
+              lat,
+              lng,
+              address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+            };
+            setLocation(locationData);
+            // 不在这里直接调用 fetchWeatherData，而是通过 location 变化触发
+          }
+        },
+        (error) => {
+          console.error('获取位置失败:', error);
+          setLoading(false);
+          // 地理位置获取失败时不显示错误，等待用户手动输入位置
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000
+        }
+      );
+    }
+  }, [isMounted]); // 移除 fetchWeatherData 依赖项
+
+  // 当位置变化时获取天气数据
+  useEffect(() => {
+    if (location && isMounted) {
+      fetchWeatherData(location.lat, location.lng);
+    }
+  }, [location, isMounted, fetchWeatherData]);
   
   // 将主题设置保存到本地存储
   useEffect(() => {
@@ -569,59 +768,6 @@ export default function Home() {
     }
   };
   
-  const fetchWeatherData = async (lat: number, lng: number) => {
-    setLoading(true);
-    setApiError(null);
-    
-    try {
-      // 获取当前天气数据
-      const currentData = await getCurrentWeather(lat, lng);
-      setCurrentWeather(convertCurrentWeather(currentData, isDarkMode));
-    } catch (error) {
-      console.error('获取当前天气失败:', error);
-      handleApiError(error);
-      setCurrentWeather(null);
-    }
-    
-    try {
-      // 获取每小时预报
-      const hourlyData = await getHourlyForecast(lat, lng);
-      console.log('每小时预报数据:', hourlyData);
-      if (!hourlyData || !hourlyData.forecastHours || !Array.isArray(hourlyData.forecastHours) || hourlyData.forecastHours.length === 0) {
-        console.error('每小时预报数据格式不正确:', hourlyData);
-        setHourlyForecast({ hours: [] });
-      } else {
-        setHourlyForecast(convertHourlyForecast(hourlyData, isDarkMode));
-      }
-    } catch (error) {
-      console.error('获取每小时预报失败:', error);
-      if (!apiError) handleApiError(error);
-      setHourlyForecast({ hours: [] });
-    }
-    
-    try {
-      // 获取每日预报
-      const dailyData = await getDailyForecast(lat, lng);
-      setDailyForecast(convertDailyForecast(dailyData, isDarkMode));
-    } catch (error) {
-      console.error('获取每日预报失败:', error);
-      if (!apiError) handleApiError(error);
-      setDailyForecast(null);
-    }
-    
-    try {
-      // 获取历史数据
-      const historyData = await getHourlyHistory(lat, lng);
-      setHourlyHistory(convertHourlyHistory(historyData, isDarkMode));
-    } catch (error) {
-      console.error('获取历史数据失败:', error);
-      if (!apiError) handleApiError(error);
-      setHourlyHistory(null);
-    }
-    
-    setLoading(false);
-  };
-  
   const handleLocationChange = async (newLocation: LocationData) => {
     setLocation(newLocation);
     try {
@@ -637,13 +783,32 @@ export default function Home() {
       fetchWeatherData(location.lat, location.lng);
     }
   };
+  
+  // 监听滚动，添加header阴影
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 10) {
+        setHeaderShadow(true);
+      } else {
+        setHeaderShadow(false);
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    // 初始调用一次确保初始状态正确
+    handleScroll();
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   return (
-    <div className="flex flex-col min-h-screen" style={{ background: 'var(--main-bg)' }}>
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <header 
-        className="shadow-md text-white p-4" 
-        style={{ 
-          background: `linear-gradient(to right, var(--header-bg-from), var(--header-bg-to))` 
+        className={`fixed-header ${headerShadow ? 'fixed-header-shadow' : ''} p-4 text-white w-full`}
+        style={{
+          background: `linear-gradient(to right, var(--header-bg-from), var(--header-bg-to))`,
         }}
       >
         <div className="container flex flex-col mx-auto justify-between items-center md:flex-row">
@@ -785,95 +950,103 @@ export default function Home() {
         </div>
       </header>
       
-      <div className="container mx-auto mt-4 p-4">
-        <div className="mx-auto max-w-md mb-6 w-full">
-          <LocationSearch onLocationChange={handleLocationChange} />
-        </div>
-      </div>
+      {/* 为fixed header添加占位元素，移动端高度更大 */}
+      <div className="h-[90px] md:h-[72px]"></div>
       
-      <main className="container flex-grow mx-auto p-4">
-        {apiError && (
-          <div className="mb-6">
-            <ErrorDisplay error={apiError} onRetry={handleRetry} />
+      <main style={{ background: 'var(--main-bg)' }}>
+        <div className="container mx-auto mt-4 p-4">
+          <div className="mx-auto max-w-md mb-6 w-full">
+            <LocationSearch 
+              onLocationChange={handleLocationChange} 
+              recentSearches={searchTerms} 
+            />
           </div>
-        )}
         
-        <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
-          <div className="lg:col-span-1">
-            <WeatherMap location={location} />
-            
-            <div className="mt-6">
-              {location && (
-                <h2 className="font-normal text-xl mb-2 text-google-gray-800">
-                  {location.address || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
-                </h2>
-              )}
-              <CurrentWeather data={currentWeather} isLoading={loading} />
+          {apiError && (
+            <div className="mb-6">
+              <ErrorDisplay error={apiError} onRetry={handleRetry} />
             </div>
-          </div>
+          )}
           
-          <div className="lg:col-span-2">
-            <div 
-              className="rounded-lg shadow-sm mb-6 p-4" 
-              style={{ background: 'var(--card-background)' }}
-            >
-              <div className="border-b flex overflow-x-auto">
-                <button
-                  className={`py-2 px-4 font-medium whitespace-nowrap ${
-                    activeTab === 'hourly' 
-                      ? 'border-b-2' 
-                      : ''
-                  }`}
-                  style={{ 
-                    color: activeTab === 'hourly' ? 'var(--tab-active)' : 'var(--tab-inactive)',
-                    borderColor: activeTab === 'hourly' ? 'var(--tab-border)' : 'transparent' 
-                  }}
-                  onClick={() => setActiveTab('hourly')}
-                >
-                  每小时预报
-                </button>
-                <button
-                  className={`py-2 px-4 font-medium whitespace-nowrap ${
-                    activeTab === 'daily' 
-                      ? 'border-b-2' 
-                      : ''
-                  }`}
-                  style={{ 
-                    color: activeTab === 'daily' ? 'var(--tab-active)' : 'var(--tab-inactive)', 
-                    borderColor: activeTab === 'daily' ? 'var(--tab-border)' : 'transparent'
-                  }}
-                  onClick={() => setActiveTab('daily')}
-                >
-                  每日预报
-                </button>
-                <button
-                  className={`py-2 px-4 font-medium whitespace-nowrap ${
-                    activeTab === 'history' 
-                      ? 'border-b-2' 
-                      : ''
-                  }`}
-                  style={{ 
-                    color: activeTab === 'history' ? 'var(--tab-active)' : 'var(--tab-inactive)',
-                    borderColor: activeTab === 'history' ? 'var(--tab-border)' : 'transparent' 
-                  }}
-                  onClick={() => setActiveTab('history')}
-                >
-                  历史记录
-                </button>
-              </div>
+          <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
+            <div className="lg:col-span-1">
+              <WeatherMap location={location} />
               
-              <div className="mt-4">
-                {activeTab === 'hourly' && <HourlyForecast data={hourlyForecast} isLoading={loading} />}
-                {activeTab === 'daily' && <DailyForecast data={dailyForecast} isLoading={loading} />}
-                {activeTab === 'history' && <HourlyHistory data={hourlyHistory} isLoading={loading} />}
+              <div className="mt-6">
+                {location && (
+                  <h2 className="font-normal text-xl mb-2 text-google-gray-800">
+                    {location.address || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
+                  </h2>
+                )}
+                <CurrentWeather data={currentWeather} isLoading={loading} />
+              </div>
+            </div>
+            
+            <div className="lg:col-span-2">
+              <div 
+                className="rounded-lg shadow-sm mb-6 p-4" 
+                style={{ background: 'var(--card-background)' }}
+              >
+                <div className="flex overflow-x-auto pb-2">
+                  <button
+                    className={`py-2 px-4 font-medium whitespace-nowrap ${
+                      activeTab === 'hourly' 
+                        ? 'border-b-2' 
+                        : ''
+                    }`}
+                    style={{ 
+                      color: activeTab === 'hourly' ? 'var(--tab-active)' : 'var(--tab-inactive)',
+                      borderColor: activeTab === 'hourly' ? 'var(--tab-border)' : 'transparent' 
+                    }}
+                    onClick={() => setActiveTab('hourly')}
+                  >
+                    每小时预报
+                  </button>
+                  <button
+                    className={`py-2 px-4 font-medium whitespace-nowrap ${
+                      activeTab === 'daily' 
+                        ? 'border-b-2' 
+                        : ''
+                    }`}
+                    style={{ 
+                      color: activeTab === 'daily' ? 'var(--tab-active)' : 'var(--tab-inactive)',
+                      borderColor: activeTab === 'daily' ? 'var(--tab-border)' : 'transparent' 
+                    }}
+                    onClick={() => setActiveTab('daily')}
+                  >
+                    每日预报
+                  </button>
+                  <button
+                    className={`py-2 px-4 font-medium whitespace-nowrap ${
+                      activeTab === 'history' 
+                        ? 'border-b-2' 
+                        : ''
+                    }`}
+                    style={{ 
+                      color: activeTab === 'history' ? 'var(--tab-active)' : 'var(--tab-inactive)',
+                      borderColor: activeTab === 'history' ? 'var(--tab-border)' : 'transparent' 
+                    }}
+                    onClick={() => setActiveTab('history')}
+                  >
+                    历史记录
+                  </button>
+                </div>
+                
+                <div className="mt-4">
+                  {activeTab === 'hourly' && <HourlyForecast data={hourlyForecast} isLoading={loading} />}
+                  {activeTab === 'daily' && <DailyForecast data={dailyForecast} isLoading={loading} />}
+                  {activeTab === 'history' && <HourlyHistory data={hourlyHistory} isLoading={loading} />}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </main>
       
+      <div className="footer-spacer"></div>
+      
       <footer 
-        className="mt-auto text-white p-4"
+        className="fixed-footer p-4 text-white w-full"
         style={{ background: 'var(--footer-bg)' }}
       >
         <div className="container mx-auto">

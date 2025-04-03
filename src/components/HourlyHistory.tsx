@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Chart as ChartJS, 
   CategoryScale, 
@@ -9,7 +9,10 @@ import {
   Tooltip, 
   Legend,
   Filler,
-  BarElement
+  BarElement,
+  ChartEvent,
+  ActiveElement,
+  ScriptableContext
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import { HourlyHistory as HourlyHistoryType } from '@/types/weather';
@@ -34,6 +37,44 @@ interface HourlyHistoryProps {
 
 const HourlyHistory: React.FC<HourlyHistoryProps> = ({ data, isLoading }) => {
   const [selectedMetric, setSelectedMetric] = useState<string>('temperature');
+  const [highlightedHourIndex, setHighlightedHourIndex] = useState<number | null>(null);
+  const rowRefs = useRef<(HTMLTableRowElement | null)[]>([]);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  
+  // 当高亮小时索引变化时，滚动到对应行
+  useEffect(() => {
+    if (highlightedHourIndex !== null && rowRefs.current[highlightedHourIndex] && tableContainerRef.current) {
+      const container = tableContainerRef.current;
+      const element = rowRefs.current[highlightedHourIndex];
+      
+      if (element) {
+        // 计算需要滚动的位置
+        const elementRect = element.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        
+        // 检查元素是否在可视区域内
+        const isInView = (
+          elementRect.top >= containerRect.top &&
+          elementRect.bottom <= containerRect.bottom
+        );
+        
+        if (!isInView) {
+          // 自动滚动到元素位置，使其在容器中可见
+          element.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest'
+          });
+        }
+      }
+    }
+  }, [highlightedHourIndex]);
+
+  // 初始化 refs 数组
+  useEffect(() => {
+    if (data && data.hours) {
+      rowRefs.current = Array(data.hours.length).fill(null);
+    }
+  }, [data]);
   
   const metricOptions = [
     { id: 'temperature', label: '温度' },
@@ -69,22 +110,22 @@ const HourlyHistory: React.FC<HourlyHistoryProps> = ({ data, isLoading }) => {
       case 'temperature':
         chartData = data.hours.map(hour => hour.weatherData.temperature.value);
         label = '历史温度 (°C)';
-        color = 'rgba(255, 99, 132, 1)';
+        color = 'rgba(66, 133, 244, 1)'; // Google 蓝色
         break;
       case 'precipitation':
         chartData = data.hours.map(hour => hour.weatherData.precipitationProbability.value);
         label = '历史降水概率 (%)';
-        color = 'rgba(53, 162, 235, 1)';
+        color = 'rgba(52, 168, 83, 1)'; // Google 绿色
         break;
       case 'humidity':
         chartData = data.hours.map(hour => hour.weatherData.humidity.value);
         label = '历史湿度 (%)';
-        color = 'rgba(75, 192, 192, 1)';
+        color = 'rgba(234, 67, 53, 1)'; // Google 红色
         break;
       case 'windSpeed':
         chartData = data.hours.map(hour => hour.weatherData.windSpeed.value);
         label = '历史风速 (km/h)';
-        color = 'rgba(255, 206, 86, 1)';
+        color = 'rgba(251, 188, 5, 1)'; // Google 黄色
         break;
       default:
         break;
@@ -96,26 +137,117 @@ const HourlyHistory: React.FC<HourlyHistoryProps> = ({ data, isLoading }) => {
         {
           label,
           data: chartData,
-          backgroundColor: color,
+          backgroundColor: (ctx: ScriptableContext<'bar'>) => {
+            const index = ctx.dataIndex;
+            // 给高亮项添加透明度变化
+            return index === highlightedHourIndex 
+              ? color 
+              : `${color.slice(0, -2)}0.8)`;  // 提高不透明度以增强暗色模式可见性
+          },
+          borderColor: color,
+          borderWidth: (ctx: ScriptableContext<'bar'>) => {
+            const index = ctx.dataIndex;
+            return index === highlightedHourIndex ? 3 : 1;  // 增加边框宽度
+          },
+          borderRadius: 4,
+          hoverBackgroundColor: color,
         },
       ],
     };
   };
   
+  // 根据暗色主题调整颜色
+  const isDarkMode = typeof window !== 'undefined' && 
+    window.matchMedia && 
+    window.matchMedia('(prefers-color-scheme: dark)').matches;
+  
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'top' as const,
+        labels: {
+          font: {
+            family: 'Roboto, "Helvetica Neue", Arial, sans-serif',
+            size: 12
+          },
+          color: isDarkMode ? '#e8eaed' : '#5f6368'
+        }
       },
       title: {
         display: true,
         text: '过去24小时天气历史',
+        font: {
+          family: 'Roboto, "Helvetica Neue", Arial, sans-serif',
+          size: 16,
+          weight: 'normal' as const
+        },
+        color: isDarkMode ? '#ffffff' : '#202124'
       },
+      tooltip: {
+        mode: 'index' as const,
+        intersect: false,
+        backgroundColor: isDarkMode ? 'rgba(32, 33, 36, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        titleColor: isDarkMode ? '#ffffff' : '#202124',
+        bodyColor: isDarkMode ? '#e8eaed' : '#5f6368',
+        borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+        borderWidth: 1,
+        titleFont: {
+          family: 'Roboto, "Helvetica Neue", Arial, sans-serif',
+          size: 14,
+          weight: 'bold' as const
+        },
+        bodyFont: {
+          family: 'Roboto, "Helvetica Neue", Arial, sans-serif',
+          size: 14
+        },
+        padding: 12,
+        displayColors: true,
+        boxShadow: isDarkMode ? 
+          '0 2px 5px 0 rgba(0, 0, 0, 0.5), 0 2px 10px 0 rgba(0, 0, 0, 0.5)' :
+          '0 2px 5px 0 rgba(0, 0, 0, 0.16), 0 2px 10px 0 rgba(0, 0, 0, 0.12)'
+      }
     },
     scales: {
       y: {
         beginAtZero: selectedMetric === 'precipitation' || selectedMetric === 'humidity',
+        grid: {
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)'
+        },
+        ticks: {
+          color: isDarkMode ? '#e8eaed' : '#5f6368',
+          font: {
+            family: 'Roboto, "Helvetica Neue", Arial, sans-serif'
+          }
+        }
+      },
+      x: {
+        grid: {
+          color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)'
+        },
+        ticks: {
+          color: isDarkMode ? '#e8eaed' : '#5f6368',
+          font: {
+            family: 'Roboto, "Helvetica Neue", Arial, sans-serif'
+          }
+        }
+      }
+    },
+    interaction: {
+      mode: 'nearest' as const,
+      axis: 'x' as const,
+      intersect: false
+    },
+    hover: {
+      mode: 'nearest' as const,
+      intersect: false
+    },
+    onHover: (event: ChartEvent, elements: ActiveElement[]) => {
+      if (elements && elements.length > 0) {
+        setHighlightedHourIndex(elements[0].index);
+      } else {
+        setHighlightedHourIndex(null);
       }
     }
   };
@@ -158,11 +290,11 @@ const HourlyHistory: React.FC<HourlyHistoryProps> = ({ data, isLoading }) => {
         </div>
       </div>
       
-      <div className="h-[300px]">
+      <div className="w-full h-[300px]">
         <Bar options={chartOptions} data={prepareChartData()} />
       </div>
       
-      <div className="mt-6">
+      <div className="mt-6" ref={tableContainerRef} style={{ maxHeight: '300px', overflowY: 'auto' }}>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b dark:border-gray-700">
@@ -176,7 +308,17 @@ const HourlyHistory: React.FC<HourlyHistoryProps> = ({ data, isLoading }) => {
           </thead>
           <tbody>
             {data.hours.map((hour, index) => (
-              <tr key={index} className="border-b dark:border-gray-700">
+              <tr 
+                key={index} 
+                className={`border-b dark:border-gray-700 transition-colors duration-200 ${
+                  index === highlightedHourIndex ? 'bg-blue-50 dark:bg-blue-900/30' : ''
+                }`}
+                onMouseEnter={() => setHighlightedHourIndex(index)}
+                onMouseLeave={() => setHighlightedHourIndex(null)}
+                ref={el => {
+                  rowRefs.current[index] = el;
+                }}
+              >
                 <td className="py-2">{formatTime(hour.time)}</td>
                 <td className="py-2">
                   {hour.weatherCondition && (
@@ -186,14 +328,14 @@ const HourlyHistory: React.FC<HourlyHistoryProps> = ({ data, isLoading }) => {
                         alt={hour.weatherCondition.text} 
                         className="w-6 h-6 mr-1"
                       />
-                      <span>{hour.weatherCondition.text}</span>
+                      <span>{hour.weatherCondition.typeText || hour.weatherCondition.text}</span>
                     </div>
                   )}
                 </td>
-                <td className="py-2">{hour.weatherData.temperature.value}°{hour.weatherData.temperature.unit}</td>
+                <td className="py-2">{hour.weatherData.temperature.value}°C</td>
                 <td className="py-2">{hour.weatherData.precipitationProbability.value}%</td>
                 <td className="py-2">{hour.weatherData.humidity.value}%</td>
-                <td className="py-2">{hour.weatherData.windSpeed.value} {hour.weatherData.windSpeed.unit}</td>
+                <td className="py-2">{hour.weatherData.windSpeed.value} km/h</td>
               </tr>
             ))}
           </tbody>
