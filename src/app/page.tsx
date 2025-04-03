@@ -792,14 +792,6 @@ export default function Home() {
       </div>
       
       <main className="container flex-grow mx-auto p-4">
-        {location && (
-          <div className="mb-6">
-            <h2 className="font-normal text-xl mb-2 text-google-gray-800">
-              {location.address || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
-            </h2>
-          </div>
-        )}
-        
         {apiError && (
           <div className="mb-6">
             <ErrorDisplay error={apiError} onRetry={handleRetry} />
@@ -811,6 +803,11 @@ export default function Home() {
             <WeatherMap location={location} />
             
             <div className="mt-6">
+              {location && (
+                <h2 className="font-normal text-xl mb-2 text-google-gray-800">
+                  {location.address || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
+                </h2>
+              )}
               <CurrentWeather data={currentWeather} isLoading={loading} />
             </div>
           </div>
