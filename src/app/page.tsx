@@ -554,27 +554,18 @@ export default function Home() {
           
           // 尝试获取位置名称
           try {
-            // 使用Google Maps Geocoding API
-            const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`;
-            const response = await fetch(geocodeUrl);
-            const data = await response.json() as GeocodeResponse;
+            // 使用后端API进行反向地理编码
+            const response = await fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`);
+            const data = await response.json();
             
-            let address = '';
-            if (data.results && data.results.length > 0) {
-              // 尝试获取城市名称
-              const locality = data.results.find(result => result.types.includes('locality'));
-              if (locality) {
-                address = locality.formatted_address;
-              } else {
-                // 否则使用第一个结果
-                address = data.results[0].formatted_address;
-              }
+            if (data.error) {
+              throw new Error(data.error);
             }
             
             const locationData: LocationData = {
               lat,
               lng,
-              address: address || `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+              address: data.address || `${lat.toFixed(4)}, ${lng.toFixed(4)}`
             };
             
             // 保存位置到本地存储
@@ -772,14 +763,20 @@ export default function Home() {
     // 如果已经在加载中，不要重复处理
     if (loading) return;
     
+    // 明确设置loading状态为true
+    setLoading(true);
     setLocation(newLocation);
-    setLoading(true); // 明确设置loading状态为true
+    
     try {
       await fetchWeatherData(newLocation.lat, newLocation.lng);
     } catch (error) {
       handleApiError(error);
     } finally {
-      setLoading(false); // 确保任何情况下都重置加载状态
+      // 确保任何情况下都重置加载状态
+      setTimeout(() => {
+        setLoading(false);
+        console.log('天气数据加载完成，重置loading状态');
+      }, 300);
     }
   };
 
@@ -811,20 +808,20 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <header 
-        className={`fixed-header ${headerShadow ? 'fixed-header-shadow' : ''} p-4 text-white w-full`}
+        className={`fixed-header ${headerShadow ? 'fixed-header-shadow' : ''} px-4 py-3 sm:p-4 text-white w-full`}
         style={{
           background: `linear-gradient(to right, var(--header-bg-from), var(--header-bg-to))`,
         }}
       >
-        <div className="container flex flex-col mx-auto justify-between items-center md:flex-row">
-          <div className="flex items-center">
-            <svg className="h-8 mr-2 w-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <div className="container flex flex-col mx-auto justify-between items-center sm:flex-row">
+          <div className="flex items-center mb-2 sm:mb-0">
+            <svg className="h-6 w-6 sm:h-8 sm:w-8 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 3V4M12 20V21M4 12H3M21 12H20M6.3 6.3L5.5 5.5M18.7 6.3L19.5 5.5M17.7 17.7L18.5 18.5M6.3 17.7L5.5 18.5M16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8C14.2091 8 16 9.79086 16 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <h1 className="font-normal text-2xl">Google 天气</h1>
+            <h1 className="font-normal text-xl sm:text-2xl">Google 天气</h1>
           </div>
           
-          <div className="flex mt-4 items-center md:mt-0">
+          <div className="flex items-center">
             {isMounted && (
               <div className="flex items-center relative">
                 <button 
@@ -955,12 +952,12 @@ export default function Home() {
         </div>
       </header>
       
-      {/* 为fixed header添加占位元素，移动端高度更大 */}
-      <div className="h-[90px] md:h-[72px]"></div>
+      {/* 为fixed header添加占位元素 */}
+      <div className="h-[80px] sm:h-[72px]"></div>
       
       <main style={{ background: 'var(--main-bg)' }}>
-        <div className="container mx-auto mt-4 p-4">
-          <div className="mx-auto max-w-md mb-6 w-full">
+        <div className="container mx-auto px-4 py-3 sm:p-4">
+          <div className="w-full mx-auto mb-6">
             <LocationSearch 
               onLocationChange={handleLocationChange} 
               recentSearches={searchTerms} 
@@ -975,12 +972,12 @@ export default function Home() {
           )}
           
           <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 order-2 lg:order-1">
               <WeatherMap location={location} />
               
               <div className="mt-6">
                 {location && (
-                  <h2 className="font-normal text-xl mb-2 text-google-gray-800">
+                  <h2 className="font-normal text-lg sm:text-xl mb-2 text-google-gray-800 break-words">
                     {location.address || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
                   </h2>
                 )}
@@ -988,14 +985,14 @@ export default function Home() {
               </div>
             </div>
             
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 order-1 lg:order-2 mb-4 lg:mb-0">
               <div 
-                className="rounded-lg shadow-sm mb-6 p-4" 
+                className="rounded-lg shadow-sm p-3 sm:p-4" 
                 style={{ background: 'var(--card-background)' }}
               >
-                <div className="flex overflow-x-auto pb-2">
+                <div className="flex overflow-x-auto -mx-2 px-2 pb-2">
                   <button
-                    className={`py-2 px-4 font-medium whitespace-nowrap ${
+                    className={`py-2 px-3 sm:px-4 font-medium whitespace-nowrap flex-shrink-0 ${
                       activeTab === 'hourly' 
                         ? 'border-b-2' 
                         : ''
@@ -1009,7 +1006,7 @@ export default function Home() {
                     每小时预报
                   </button>
                   <button
-                    className={`py-2 px-4 font-medium whitespace-nowrap ${
+                    className={`py-2 px-3 sm:px-4 font-medium whitespace-nowrap flex-shrink-0 ${
                       activeTab === 'daily' 
                         ? 'border-b-2' 
                         : ''
@@ -1023,7 +1020,7 @@ export default function Home() {
                     每日预报
                   </button>
                   <button
-                    className={`py-2 px-4 font-medium whitespace-nowrap ${
+                    className={`py-2 px-3 sm:px-4 font-medium whitespace-nowrap flex-shrink-0 ${
                       activeTab === 'history' 
                         ? 'border-b-2' 
                         : ''

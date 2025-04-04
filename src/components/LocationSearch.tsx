@@ -26,10 +26,35 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
   const isLoading = internalLoading || externalLoading;
 
   useEffect(() => {
+    console.log('加载状态变化 - 内部:', internalLoading, '外部:', externalLoading, '组合:', isLoading);
+  }, [internalLoading, externalLoading, isLoading]);
+
+  useEffect(() => {
     if (externalLoading) {
       setShowRecentSearches(false);
     }
   }, [externalLoading]);
+
+  useEffect(() => {
+    if (!externalLoading && internalLoading) {
+      setInternalLoading(false);
+    }
+  }, [externalLoading, internalLoading]);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    
+    if (internalLoading) {
+      timer = setTimeout(() => {
+        console.warn('搜索操作超时，自动重置加载状态');
+        setInternalLoading(false);
+      }, 10000);
+    }
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [internalLoading]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +68,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
       const location = await getLocationByAddress(address);
       if (location) {
         onLocationChange({ ...location, address });
+        setInternalLoading(false);
       } else {
         setError('无法找到该地址，请尝试更具体的位置');
         setInternalLoading(false);
@@ -115,74 +141,71 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
   return (
     <div className="w-full">
       <form ref={formRef} onSubmit={handleSearch} className="flex flex-col gap-2">
-        <div className="relative flex">
-          <div className="flex-grow relative">
-            <input
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="输入城市或地址..."
-              className={`w-full py-3 px-4 rounded-l-full focus:outline-none focus:ring-2 focus:ring-google-blue ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
-              style={{ 
-                border: '1px solid var(--search-border)',
-                borderRight: 'none',
-                background: 'var(--card-background)', 
-                color: 'var(--foreground)',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-              }}
-              disabled={isLoading}
-              aria-disabled={isLoading}
-            />
-            {isLoading && (
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-t-transparent"
-                     style={{ borderColor: 'var(--tab-inactive)', borderTopColor: 'transparent' }}></div>
-              </div>
+        <div className="relative flex flex-col sm:flex-row">
+          <div className="flex w-full">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="输入城市或地址..."
+                className={`search-input w-full ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                disabled={isLoading}
+                aria-disabled={isLoading}
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck="false"
+              />
+              {isLoading && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-t-transparent"
+                       style={{ borderColor: 'var(--tab-inactive)', borderTopColor: 'transparent' }}></div>
+                </div>
+              )}
+            </div>
+            {recentSearches.length > 0 && (
+              <button
+                type="button"
+                ref={recentButtonRef}
+                onClick={toggleRecentSearches}
+                className={`search-history-button py-2 sm:py-3 px-3 ${isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                style={{ 
+                  background: 'var(--card-background)',
+                  color: showRecentSearches ? 'var(--tab-active)' : 'var(--foreground)'
+                }}
+                disabled={isLoading}
+                aria-disabled={isLoading}
+                title="最近搜索"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                </svg>
+              </button>
             )}
           </div>
-
-          {recentSearches.length > 0 && (
-            <button
-              type="button"
-              ref={recentButtonRef}
-              onClick={toggleRecentSearches}
-              className={`py-3 px-3 border-y border-l ${isLoading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-              style={{ 
-                borderColor: 'var(--search-border)', 
-                background: 'var(--card-background)',
-                color: showRecentSearches ? 'var(--tab-active)' : 'var(--foreground)'
-              }}
-              disabled={isLoading}
-              aria-disabled={isLoading}
-              title="最近搜索"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-              </svg>
-            </button>
-          )}
 
           <button
             type="submit"
             ref={submitButtonRef}
-            className={`rounded-r-full text-white py-2 px-5 transition ${isLoading ? 'opacity-70 cursor-wait' : 'hover:bg-opacity-90'}`}
-            style={{ background: 'var(--header-bg-from)' }}
+            className={`search-submit-button py-2 sm:py-3 px-4 sm:px-5 transition ${isLoading ? 'opacity-70 cursor-wait' : 'hover:bg-opacity-90'}`}
             disabled={isLoading}
             aria-disabled={isLoading}
           >
             {isLoading ? (
-              <div className="flex items-center">
+              <div className="flex items-center justify-center">
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-t-transparent mr-2"
                      style={{ borderColor: 'white', borderTopColor: 'transparent' }}></div>
                 <span>搜索中</span>
               </div>
-            ) : '搜索'}
+            ) : (
+              <span className="whitespace-nowrap">搜索</span>
+            )}
           </button>
           
           {showRecentSearches && recentSearches.length > 0 && !isLoading && (
             <div 
               ref={recentSearchesRef}
-              className="absolute top-full mt-1 right-0 w-48 rounded-md border shadow-lg z-10"
+              className="absolute top-full mt-1 right-0 sm:right-auto w-full sm:w-48 rounded-md border shadow-lg z-10"
               style={{ 
                 background: 'var(--card-background)', 
                 border: '1px solid var(--search-border)',
@@ -230,7 +253,7 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
               {error}
             </p>
             {isLocationError && (
-              <p className="mt-1 text-sm" style={{ color: 'var(--tab-inactive)' }}>
+              <p className="mt-1 text-xs sm:text-sm" style={{ color: 'var(--tab-inactive)' }}>
                 建议：尝试搜索更大的城市或地区，某些偏远位置可能不被Google天气API支持。
               </p>
             )}

@@ -16,6 +16,16 @@
   --search-ring: #4285F4;
   --main-bg: #F8F9FA;
   --hover-bg: rgba(66, 133, 244, 0.04);
+  --focus-ring: rgb(80, 130, 255);
+  --card-border: rgba(0, 0, 0, 0.1);
+  --tab-bar: rgba(0, 0, 0, 0.1);
+  --toggle-off: rgb(209, 209, 209);
+  --toggle-on: rgb(99, 173, 251);
+  --hover-lighten: rgba(255, 255, 255, 0.1);
+  
+  /* 搜索框变量 */
+  --search-border: rgba(0, 0, 0, 0.15);
+  --search-ring: rgb(66, 133, 244);
 }
 
 /* 亮色主题 */
@@ -35,6 +45,12 @@
   --search-ring: #4285F4;
   --main-bg: #F8F9FA;
   --hover-bg: rgba(66, 133, 244, 0.04);
+  --focus-ring: rgb(80, 130, 255);
+  --card-border: rgba(0, 0, 0, 0.1);
+  --tab-bar: rgba(0, 0, 0, 0.1);
+  --toggle-off: rgb(209, 209, 209);
+  --toggle-on: rgb(99, 173, 251);
+  --hover-lighten: rgba(255, 255, 255, 0.1);
 }
 
 /* 暗色主题 */
@@ -54,6 +70,16 @@
   --search-ring: #4285F4;
   --main-bg: #202124;
   --hover-bg: rgba(138, 180, 248, 0.1);
+  --focus-ring: rgb(80, 130, 255);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --tab-bar: rgba(255, 255, 255, 0.1);
+  --toggle-off: rgb(75, 75, 75);
+  --toggle-on: rgb(66, 133, 244);
+  --hover-lighten: rgba(255, 255, 255, 0.1);
+  
+  /* 搜索框变量 */
+  --search-border: rgba(255, 255, 255, 0.15);
+  --search-ring: rgb(66, 133, 244);
 }
 
 @theme inline {
@@ -81,6 +107,12 @@
     --search-ring: #4285F4;
     --main-bg: #202124;
     --hover-bg: rgba(138, 180, 248, 0.1);
+    --focus-ring: rgb(80, 130, 255);
+    --card-border: rgba(255, 255, 255, 0.08);
+    --tab-bar: rgba(255, 255, 255, 0.1);
+    --toggle-off: rgb(75, 75, 75);
+    --toggle-on: rgb(66, 133, 244);
+    --hover-lighten: rgba(255, 255, 255, 0.1);
   }
 }
 
@@ -102,6 +134,12 @@
     --search-ring: #4285F4;
     --main-bg: #F8F9FA;
     --hover-bg: rgba(66, 133, 244, 0.04);
+    --focus-ring: rgb(80, 130, 255);
+    --card-border: rgba(0, 0, 0, 0.1);
+    --tab-bar: rgba(0, 0, 0, 0.1);
+    --toggle-off: rgb(209, 209, 209);
+    --toggle-on: rgb(99, 173, 251);
+    --hover-lighten: rgba(255, 255, 255, 0.1);
   }
 }
 
@@ -264,4 +302,292 @@ main {
   opacity: 1;
   transform: translateY(0);
   transition: opacity 200ms, transform 200ms;
+}
+
+/* 响应式布局调整 */
+@media (max-width: 640px) {
+  /* 缩小移动端的卡片内边距 */
+  .rounded-lg {
+    border-radius: 0.75rem;
+  }
+  
+  /* 移动端优化间距 */
+  .container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  
+  /* 调整小时天气卡片 */
+  [ref="hourItemRefs"] {
+    min-width: 4.5rem;
+    padding: 0.5rem;
+  }
+}
+
+/* 小时天气卡片样式 */
+.hourly-card {
+  min-width: 5.5rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: var(--card-background);
+  border: 1px solid transparent;
+}
+
+.hourly-card:hover, .hourly-card-highlighted {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: var(--search-border);
+}
+
+.hourly-card-highlighted {
+  border-left: 2px solid var(--tab-active);
+  background-color: var(--hover-bg) !important;
+}
+
+/* 添加滚动条美化 */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 6px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 20px;
+}
+
+.dark .overflow-x-auto::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 适配小屏幕设备 */
+@media (max-width: 360px) {
+  html {
+    font-size: 14px;
+  }
+  
+  .container {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  
+  .hourly-card {
+    min-width: 4rem;
+    padding: 0.5rem;
+  }
+}
+
+/* 搜索框样式 */
+.search-input {
+  border: 1px solid var(--search-border);
+  background: var(--card-background);
+  color: var(--foreground);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+  outline: none;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  font-size: 16px;
+  height: 42px;
+}
+
+.search-input:focus {
+  border-color: #4285F4;
+  outline: none;
+  box-shadow: 0 0 0 1px #4285F4;
+}
+
+/* 搜索按钮基础样式 */
+.search-submit-button {
+  background: #4285F4;
+  color: white;
+  white-space: nowrap;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 80px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  height: 42px;
+  border: none;
+}
+
+.search-submit-button:hover {
+  background: #1a73e8;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.search-submit-button:active {
+  background: #1967d2;
+  transform: translateY(1px);
+}
+
+.search-submit-button span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* 历史按钮样式 */
+.search-history-button {
+  background: var(--card-background);
+  color: var(--foreground);
+  transition: all 0.2s ease;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--search-border);
+}
+
+.search-history-button:hover {
+  background-color: rgba(66, 133, 244, 0.08);
+}
+
+.search-history-button:active {
+  background-color: rgba(66, 133, 244, 0.12);
+}
+
+.search-history-button svg {
+  transition: all 0.2s ease;
+}
+
+.search-history-button:hover svg {
+  color: #4285F4;
+}
+
+/* 移动端搜索框样式 */
+@media (max-width: 640px) {
+  .search-input {
+    border-bottom: none;
+    border-right: none;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0;
+    box-shadow: none;
+  }
+  
+  .search-history-button {
+    border-left: none;
+    border-top: 1px solid var(--search-border);
+    border-bottom: none;
+    border-right: 1px solid var(--search-border);
+    border-top-right-radius: 0.5rem;
+    height: 42px;
+    box-sizing: border-box;
+  }
+  
+  .search-submit-button {
+    border-radius: 0.5rem;
+    margin-top: 1px;
+    min-width: 100%;
+    height: 45px;
+  }
+}
+
+/* 桌面端搜索框样式 */
+@media (min-width: 640px) {
+  .search-input {
+    border-top-left-radius: 9999px;
+    border-bottom-left-radius: 9999px;
+    border-right: none;
+  }
+  
+  .search-history-button {
+    border-top: 1px solid var(--search-border);
+    border-bottom: 1px solid var(--search-border);
+    border-left: none;
+    border-right: none;
+    height: 42px;
+    box-sizing: border-box;
+  }
+  
+  .search-submit-button {
+    border-top-right-radius: 9999px;
+    border-bottom-right-radius: 9999px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground: #e8eaed;
+    --background: #202124;
+    --card-background: #303134;
+    --tab-active: #e8eaed;
+    --tab-inactive: #9aa0a6;
+    --header-bg-from: #4285F4;
+    --header-bg-to: #2863BD;
+    --main-bg: #202124;
+    --hover-bg: rgba(138, 180, 248, 0.1);
+    --focus-ring: rgb(80, 130, 255);
+    --card-border: rgba(255, 255, 255, 0.08);
+    --tab-bar: rgba(255, 255, 255, 0.1);
+    --toggle-off: rgb(75, 75, 75);
+    --toggle-on: rgb(66, 133, 244);
+    --hover-lighten: rgba(255, 255, 255, 0.1);
+    
+    /* 搜索框变量 */
+    --search-border: rgba(255, 255, 255, 0.15);
+    --search-ring: rgb(66, 133, 244);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .light {
+    --foreground: #202124;
+    --background: #FFFFFF;
+    --card-background: #FFFFFF;
+    --tab-active: #202124;
+    --tab-inactive: #70757a;
+    --header-bg-from: #4285F4;
+    --header-bg-to: #2863BD;
+    --main-bg: #F8F9FA;
+    --hover-bg: rgba(66, 133, 244, 0.04);
+    --focus-ring: rgb(80, 130, 255);
+    --card-border: rgba(0, 0, 0, 0.1);
+    --tab-bar: rgba(0, 0, 0, 0.1);
+    --toggle-off: rgb(209, 209, 209);
+    --toggle-on: rgb(99, 173, 251);
+    --hover-lighten: rgba(255, 255, 255, 0.1);
+    
+    /* 搜索框变量 */
+    --search-border: rgba(0, 0, 0, 0.15);
+    --search-ring: rgb(66, 133, 244);
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  .dark {
+    --foreground: #e8eaed;
+    --background: #202124;
+    --card-background: #303134;
+    --tab-active: #e8eaed;
+    --tab-inactive: #9aa0a6;
+    --header-bg-from: #4285F4;
+    --header-bg-to: #2863BD;
+    --main-bg: #202124;
+    --hover-bg: rgba(138, 180, 248, 0.1);
+    --focus-ring: rgb(80, 130, 255);
+    --card-border: rgba(255, 255, 255, 0.08);
+    --tab-bar: rgba(255, 255, 255, 0.1);
+    --toggle-off: rgb(75, 75, 75);
+    --toggle-on: rgb(66, 133, 244);
+    --hover-lighten: rgba(255, 255, 255, 0.1);
+    
+    /* 搜索框变量 */
+    --search-border: rgba(255, 255, 255, 0.15);
+    --search-ring: rgb(66, 133, 244);
+  }
 }

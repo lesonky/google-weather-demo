@@ -57,22 +57,22 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ data, isLoading }) => {
   const cloudCoverDesc = getCloudCoverDescription(data.cloudCover.value);
 
   return (
-    <div className="bg-card-background rounded-lg shadow-md p-6">
-      <div className="flex items-center justify-between">
+    <div className="bg-card-background rounded-lg shadow-md p-4 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="font-bold text-2xl">当前天气</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <h2 className="font-bold text-xl sm:text-2xl">当前天气</h2>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
             观测时间：{new Date(data.observationTime).toLocaleString('zh-CN')}
           </p>
         </div>
         {data.weatherCondition && (
-          <div className="flex flex-col items-center">
+          <div className="flex flex-row sm:flex-col items-center mt-2 sm:mt-0">
             <img 
               src={data.weatherCondition.icon} 
               alt={data.weatherCondition.text} 
-              className="h-16 w-16"
+              className="h-12 w-12 sm:h-16 sm:w-16"
             />
-            <span className="font-medium text-sm text-center">
+            <span className="font-medium text-sm text-center ml-3 sm:ml-0">
               {data.weatherCondition.typeText || data.weatherCondition.text}
             </span>
           </div>
@@ -80,68 +80,68 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ data, isLoading }) => {
       </div>
       
       <div className="mt-4">
-        <div className="font-bold mb-4 text-5xl">
+        <div className="font-bold mb-4 text-4xl sm:text-5xl">
           {formatTemperature(data.temperature.value, data.temperature.unit)}
         </div>
         
         {/* 天气建议 */}
         {activitySuggestion && (
-          <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm">
+          <div className="mb-4 p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-xs sm:text-sm">
             <span className="font-medium">今日建议：</span> {activitySuggestion}
           </div>
         )}
         
-        <div className="grid gap-4 grid-cols-2">
+        <div className="grid gap-3 sm:gap-4 grid-cols-2">
           <div className="flex flex-col">
-            <span className="text-gray-500 dark:text-gray-400">体感温度</span>
-            <span className="font-medium">
+            <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">体感温度</span>
+            <span className="font-medium text-sm sm:text-base">
               {formatTemperature(data.apparentTemperature.value, data.apparentTemperature.unit)}
             </span>
           </div>
           
           <div className="flex flex-col">
-            <span className="text-gray-500 dark:text-gray-400">湿度</span>
-            <span className="font-medium">
+            <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">湿度</span>
+            <span className="font-medium text-sm sm:text-base">
               {data.humidity.value}{data.humidity.unit}
-              <span className="text-xs ml-1">({humidityInfo.description})</span>
+              <span className="text-xxs sm:text-xs ml-1">({humidityInfo.description})</span>
             </span>
           </div>
           
           <div className="flex flex-col">
-            <span className="text-gray-500 dark:text-gray-400">风速</span>
-            <span className="font-medium">
+            <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">风速</span>
+            <span className="font-medium text-sm sm:text-base">
               {formatWindSpeed(data.windSpeed.value, data.windSpeed.unit)}
             </span>
           </div>
           
           <div className="flex flex-col">
-            <span className="text-gray-500 dark:text-gray-400">风向</span>
-            <span className="font-medium">
+            <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">风向</span>
+            <span className="font-medium text-sm sm:text-base">
               {data.windDirection.text || `${data.windDirection.value}°`}
             </span>
           </div>
           
           <div className="flex flex-col">
-            <span className="text-gray-500 dark:text-gray-400">气压</span>
-            <span className="font-medium">
+            <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">气压</span>
+            <span className="font-medium text-sm sm:text-base">
               {data.pressure.value} {data.pressure.unit}
             </span>
           </div>
           
           <div className="flex flex-col">
-            <span className="text-gray-500 dark:text-gray-400">能见度</span>
-            <span className="font-medium">
+            <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">能见度</span>
+            <span className="font-medium text-sm sm:text-base">
               {visibilityInfo.text}
-              <span className="text-xs ml-1">({visibilityInfo.description})</span>
+              <span className="text-xxs sm:text-xs ml-1">({visibilityInfo.description})</span>
             </span>
           </div>
           
           <div className="flex flex-col">
-            <span className="text-gray-500 dark:text-gray-400">紫外线指数</span>
-            <span className="font-medium">
+            <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">紫外线指数</span>
+            <span className="font-medium text-sm sm:text-base">
               {data.uvIndex.value}
               <span 
-                className="text-xs ml-1 px-1 py-0.5 rounded" 
+                className="text-xxs sm:text-xs ml-1 px-1 py-0.5 rounded" 
                 style={{ backgroundColor: uvIndexInfo.color, color: 'white' }}
               >
                 {uvIndexInfo.level}
@@ -150,18 +150,18 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ data, isLoading }) => {
           </div>
           
           <div className="flex flex-col">
-            <span className="text-gray-500 dark:text-gray-400">云量</span>
-            <span className="font-medium">
+            <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">云量</span>
+            <span className="font-medium text-sm sm:text-base">
               {data.cloudCover.value}{data.cloudCover.unit}
-              <span className="text-xs ml-1">({cloudCoverDesc})</span>
+              <span className="text-xxs sm:text-xs ml-1">({cloudCoverDesc})</span>
             </span>
           </div>
           
           <div className="flex flex-col col-span-2">
-            <span className="text-gray-500 dark:text-gray-400">降水概率</span>
-            <span className="font-medium">
+            <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">降水概率</span>
+            <span className="font-medium text-sm sm:text-base">
               {data.precipitationProbability.value}{data.precipitationProbability.unit}
-              <span className="text-xs ml-1">({precipitationDesc})</span>
+              <span className="text-xxs sm:text-xs ml-1">({precipitationDesc})</span>
             </span>
           </div>
         </div>

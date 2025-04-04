@@ -1,10 +1,5 @@
 import axios, { AxiosResponse, AxiosError } from 'axios';
 
-// 这里应该放置您的Google Maps API密钥
-const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-const BASE_URL = 'https://weather.googleapis.com/v1';
-
 // 创建自定义错误类型
 class ApiError extends Error {
   response?: AxiosResponse;
@@ -20,7 +15,7 @@ class ApiError extends Error {
 }
 
 // 创建axios实例，增加超时和重试配置
-const weatherApi = axios.create({
+const api = axios.create({
   timeout: 10000, // 10秒超时
   headers: {
     'Content-Type': 'application/json'
@@ -28,7 +23,7 @@ const weatherApi = axios.create({
 });
 
 // axios响应拦截器
-weatherApi.interceptors.response.use(
+api.interceptors.response.use(
   response => response,
   async error => {
     const { config, response } = error;
@@ -55,7 +50,7 @@ weatherApi.interceptors.response.use(
     
     // 重试请求
     await delay;
-    return weatherApi(config);
+    return api(config);
   }
 );
 
@@ -341,11 +336,10 @@ export { ApiError };
  */
 export const getCurrentWeather = async (lat: number, lng: number): Promise<CurrentWeather> => {
   try {
-    const response = await weatherApi.get(`${BASE_URL}/currentConditions:lookup`, {
+    const response = await api.get(`/api/weather/current`, {
       params: {
-        key: API_KEY,
-        'location.latitude': lat,
-        'location.longitude': lng,
+        lat,
+        lng,
       },
     });
     return response.data;
@@ -363,11 +357,10 @@ export const getCurrentWeather = async (lat: number, lng: number): Promise<Curre
  */
 export const getHourlyForecast = async (lat: number, lng: number, hours = 24): Promise<HourlyForecastResponse> => {
   try {
-    const response = await weatherApi.get(`${BASE_URL}/forecast/hours:lookup`, {
+    const response = await api.get(`/api/weather/hourly-forecast`, {
       params: {
-        key: API_KEY,
-        'location.latitude': lat,
-        'location.longitude': lng,
+        lat,
+        lng,
         hours,
       },
     });
@@ -386,11 +379,10 @@ export const getHourlyForecast = async (lat: number, lng: number, hours = 24): P
  */
 export const getDailyForecast = async (lat: number, lng: number, days = 7): Promise<ForecastResponse> => {
   try {
-    const response = await weatherApi.get(`${BASE_URL}/forecast/days:lookup`, {
+    const response = await api.get(`/api/weather/daily-forecast`, {
       params: {
-        key: API_KEY,
-        'location.latitude': lat,
-        'location.longitude': lng,
+        lat,
+        lng,
         days,
       },
     });
@@ -409,11 +401,10 @@ export const getDailyForecast = async (lat: number, lng: number, days = 7): Prom
  */
 export const getHourlyHistory = async (lat: number, lng: number, hours = 24): Promise<HourlyHistoryResponse> => {
   try {
-    const response = await weatherApi.get(`${BASE_URL}/history/hours:lookup`, {
+    const response = await api.get(`/api/weather/history`, {
       params: {
-        key: API_KEY,
-        'location.latitude': lat,
-        'location.longitude': lng,
+        lat,
+        lng,
         hours,
       },
     });
@@ -430,10 +421,9 @@ export const getHourlyHistory = async (lat: number, lng: number, hours = 24): Pr
  */
 export const getLocationByAddress = async (address: string): Promise<LocationResponse> => {
   try {
-    const response = await weatherApi.get(`https://maps.googleapis.com/maps/api/geocode/json`, {
+    const response = await api.get(`/api/geocode`, {
       params: {
         address,
-        key: API_KEY,
       },
     });
     
@@ -445,11 +435,11 @@ export const getLocationByAddress = async (address: string): Promise<LocationRes
       throw new ApiError(`请求地理编码失败: ${response.data.error_message || response.data.status}`, 'GEOCODING_ERROR');
     }
     
-    if (!response.data.results || response.data.results.length === 0) {
+    if (!response.data.location) {
       throw new ApiError('未找到该地址，请尝试更具体的位置', 'ADDRESS_NOT_FOUND');
     }
     
-    return response.data.results[0]?.geometry.location;
+    return response.data.location;
   } catch (error) {
     return handleApiError(error, '获取位置信息失败');
   }

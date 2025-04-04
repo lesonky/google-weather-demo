@@ -27,6 +27,9 @@ module.exports = {
           },
         },
       },
+      fontSize: {
+        'xxs': '0.625rem', // 10px
+      },
     },
   },
   plugins: [],

@@ -92,9 +92,9 @@ const darkModeMapStyles = [
   }
 ];
 
-// 创建单例Loader实例
+// 创建一个带API密钥的Loader实例
 const mapLoader = new Loader({
-  apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+  apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || '',
   version: 'weekly',
   libraries: ['places']
 });
@@ -105,6 +105,7 @@ const WeatherMap: React.FC<WeatherMapProps> = ({ location }) => {
   const markerRef = useRef<google.maps.Marker | null>(null);
   const googleRef = useRef<typeof google | null>(null);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || '';
 
   // 检测系统主题
   useEffect(() => {
@@ -157,14 +158,7 @@ const WeatherMap: React.FC<WeatherMapProps> = ({ location }) => {
 
   useEffect(() => {
     const initMap = async () => {
-      if (!mapRef.current) return;
-      
-      const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-      
-      if (!apiKey) {
-        console.error('Google Maps API Key is missing');
-        return;
-      }
+      if (!mapRef.current || !apiKey) return;
 
       try {
         // 导入maps库
@@ -208,7 +202,7 @@ const WeatherMap: React.FC<WeatherMapProps> = ({ location }) => {
     };
 
     initMap();
-  }, [isDarkMode]); // 添加isDarkMode作为依赖，以便主题切换时重新初始化地图
+  }, [isDarkMode, apiKey, location]);
 
   useEffect(() => {
     const updateMap = async () => {
@@ -223,7 +217,7 @@ const WeatherMap: React.FC<WeatherMapProps> = ({ location }) => {
       
       try {
         // 确保google对象已加载
-        if (!googleRef.current) {
+        if (!googleRef.current && apiKey) {
           await mapLoader.load();
           googleRef.current = window.google;
         }
@@ -243,14 +237,32 @@ const WeatherMap: React.FC<WeatherMapProps> = ({ location }) => {
     if (googleRef.current) {
       updateMap();
     }
-  }, [location]);
+  }, [location, apiKey]);
 
   return (
     <div 
-      className="rounded-lg h-[400px] shadow-lg w-full overflow-hidden transition-colors duration-300"
-      style={{ background: isDarkMode ? '#202124' : '#ffffff' }}
+      className="rounded-lg h-[250px] sm:h-[300px] md:h-[400px] shadow-lg w-full overflow-hidden transition-colors duration-300"
+      ref={mapRef}
+      style={{
+        position: 'relative',
+        background: isDarkMode ? '#222' : '#f1f3f4'
+      }}
     >
-      <div ref={mapRef} className="h-full w-full" />
+      {!location && (
+        <div className="absolute inset-0 flex items-center justify-center z-10">
+          <p className="text-sm text-center p-4 max-w-xs" style={{ color: isDarkMode ? '#e8eaed' : '#5f6368' }}>
+            选择一个位置以查看地图
+          </p>
+        </div>
+      )}
+      
+      {!apiKey && (
+        <div className="absolute inset-0 flex items-center justify-center z-10 bg-red-50 dark:bg-red-900/20">
+          <p className="text-sm text-center p-4 max-w-xs text-red-600 dark:text-red-400">
+            缺少 Google Maps API Key。请在环境变量中设置 NEXT_PUBLIC_GOOGLE_MAPS_KEY。
+          </p>
+        </div>
+      )}
     </div>
   );
 };

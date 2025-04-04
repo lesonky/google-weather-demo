@@ -15,11 +15,7 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { HourlyForecast as HourlyForecastType } from '@/types/weather';
-import { 
-  getWeatherTypeColor, 
-  getPrecipitationDescription,
-  formatTemperature
-} from '@/lib/weatherUtils';
+import { formatTemperature } from '@/lib/weatherUtils';
 
 // 注册Chart.js组件
 ChartJS.register(
@@ -93,7 +89,7 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
     return date.getHours() + ':00';
   };
   
-  // 根据湿度值获取对应的样式和描述
+  // 根据湿度值获取对应的样式
   const getHumidityStyle = (humidity: number) => {
     if (humidity < 30) {
       return 'text-yellow-600';
@@ -103,18 +99,6 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
       return 'text-blue-500';
     } else {
       return 'text-blue-700';
-    }
-  };
-
-  const getHumidityDescription = (humidity: number) => {
-    if (humidity < 30) {
-      return '干燥';
-    } else if (humidity < 50) {
-      return '舒适';
-    } else if (humidity < 70) {
-      return '潮湿';
-    } else {
-      return '非常潮湿';
     }
   };
   
@@ -198,91 +182,96 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
     plugins: {
       legend: {
         position: 'top' as const,
+        display: false,
         labels: {
+          color: isDarkMode ? '#E8EAED' : '#202124',
           font: {
-            family: 'Roboto, "Helvetica Neue", Arial, sans-serif',
             size: 12
-          },
-          color: isDarkMode ? '#e8eaed' : '#5f6368'
+          }
         }
       },
-      title: {
-        display: true,
-        text: '24小时天气预报',
-        font: {
-          family: 'Roboto, "Helvetica Neue", Arial, sans-serif',
-          size: 16,
-          weight: 'normal' as const
-        },
-        color: isDarkMode ? '#ffffff' : '#202124'
-      },
       tooltip: {
-        mode: 'index' as const,
-        intersect: false,
-        backgroundColor: isDarkMode ? 'rgba(32, 33, 36, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-        titleColor: isDarkMode ? '#ffffff' : '#202124',
-        bodyColor: isDarkMode ? '#e8eaed' : '#5f6368',
-        borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+        backgroundColor: isDarkMode ? 'rgba(60, 64, 67, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+        titleColor: isDarkMode ? '#E8EAED' : '#202124',
+        bodyColor: isDarkMode ? '#E8EAED' : '#202124',
+        borderColor: isDarkMode ? 'rgba(232, 234, 237, 0.1)' : 'rgba(32, 33, 36, 0.1)',
         borderWidth: 1,
+        padding: 10,
+        boxPadding: 4,
+        usePointStyle: true,
+        bodyFont: {
+          size: 12
+        },
         titleFont: {
-          family: 'Roboto, "Helvetica Neue", Arial, sans-serif',
-          size: 14,
+          size: 12,
           weight: 'bold' as const
         },
-        bodyFont: {
-          family: 'Roboto, "Helvetica Neue", Arial, sans-serif',
-          size: 14
-        },
-        padding: 12,
-        displayColors: true,
-        boxShadow: isDarkMode ? 
-          '0 2px 5px 0 rgba(0, 0, 0, 0.5), 0 2px 10px 0 rgba(0, 0, 0, 0.5)' :
-          '0 2px 5px 0 rgba(0, 0, 0, 0.16), 0 2px 10px 0 rgba(0, 0, 0, 0.12)'
+        callbacks: {
+          // 使用自定义标签控制显示内容
+          title: function(tooltipItem: {label: string}[]) {
+            const { label } = tooltipItem[0];
+            return `时间: ${label}`;
+          },
+          label: function(context: {parsed: {y: number}, dataset: {label?: string}}) {
+            let label = context.dataset.label || '';
+            if (label) {
+              label += ': ';
+            }
+            label += context.parsed.y;
+            
+            // 为特定指标添加单位
+            if (selectedMetric === 'temperature') {
+              label += '°C';
+            } else if (selectedMetric === 'precipitationProbability' || selectedMetric === 'humidity') {
+              label += '%';
+            } else if (selectedMetric === 'windSpeed') {
+              label += 'km/h';
+            }
+            
+            return label;
+          }
+        }
       }
     },
     scales: {
-      y: {
-        beginAtZero: selectedMetric === 'precipitationProbability' || selectedMetric === 'humidity',
-        grid: {
-          color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)'
-        },
-        ticks: {
-          color: isDarkMode ? '#e8eaed' : '#5f6368',
-          font: {
-            family: 'Roboto, "Helvetica Neue", Arial, sans-serif'
-          }
-        }
-      },
       x: {
         grid: {
-          color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)'
+          color: isDarkMode ? 'rgba(232, 234, 237, 0.1)' : 'rgba(32, 33, 36, 0.1)',
         },
         ticks: {
-          color: isDarkMode ? '#e8eaed' : '#5f6368',
+          color: isDarkMode ? '#9AA0A6' : '#5F6368',
           font: {
-            family: 'Roboto, "Helvetica Neue", Arial, sans-serif'
+            size: 10,
           }
-        }
-      }
+        },
+      },
+      y: {
+        grid: {
+          color: isDarkMode ? 'rgba(232, 234, 237, 0.1)' : 'rgba(32, 33, 36, 0.1)',
+        },
+        ticks: {
+          color: isDarkMode ? '#9AA0A6' : '#5F6368',
+          font: {
+            size: 10,
+          }
+        },
+        beginAtZero: selectedMetric !== 'temperature', // 温度不从0开始
+      },
     },
     interaction: {
-      mode: 'nearest' as const,
-      axis: 'x' as const,
-      intersect: false
-    },
-    hover: {
-      mode: 'nearest' as const,
-      intersect: false
+      mode: 'index' as const,
+      intersect: false,
     },
     onHover: (event: ChartEvent, elements: ActiveElement[]) => {
-      if (elements && elements.length > 0) {
-        setHighlightedHourIndex(elements[0].index);
+      if (elements.length > 0) {
+        const firstPoint = elements[0];
+        setHighlightedHourIndex(firstPoint.index);
       } else {
         setHighlightedHourIndex(null);
       }
-    }
+    },
   };
-
+  
   // 获取降水概率对应的样式
   const getPrecipitationStyle = (probability: number) => {
     if (probability < 20) {
@@ -299,122 +288,150 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
   };
   
   const getItemClassName = (index: number) => {
-    return `flex flex-col items-center min-w-[100px] py-2 px-1 rounded-lg transition-all duration-200 ${
-      index === highlightedHourIndex ? 'bg-blue-50 dark:bg-blue-900/30 shadow-md transform scale-105' : ''
+    return `hourly-card ${
+      index === highlightedHourIndex ? 'hourly-card-highlighted' : ''
     }`;
   };
   
   if (isLoading) {
     return (
-      <div className="bg-card-background rounded-lg shadow-md p-6 animate-pulse">
-        <div className="rounded bg-gray-200 h-6 mb-4 w-1/2 dark:bg-gray-700"></div>
-        <div className="rounded bg-gray-200 h-48 w-full dark:bg-gray-700"></div>
+      <div className="flex flex-col animate-pulse">
+        <div className="flex justify-center mb-4 space-x-2">
+          {metricOptions.map((option) => (
+            <div key={option.id} className="h-8 w-16 bg-gray-200 rounded dark:bg-gray-700"></div>
+          ))}
+        </div>
+        <div className="h-64 bg-gray-200 rounded-lg dark:bg-gray-700 mb-4"></div>
+        <div className="flex overflow-x-auto space-x-3 py-2">
+          {[...Array(6)].map((_, index) => (
+            <div key={index} className="flex-none w-20 h-28 bg-gray-200 rounded dark:bg-gray-700"></div>
+          ))}
+        </div>
       </div>
     );
   }
 
-  if (!data) {
+  if (!data || !data.hours || data.hours.length === 0) {
     return (
-      <div className="bg-card-background rounded-lg shadow-md p-6">
-        <p className="text-gray-500 dark:text-gray-400">请选择一个位置查看每小时天气预报</p>
+      <div className="text-center p-4">
+        <p className="text-gray-500 dark:text-gray-400">无天气预报数据</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-card-background rounded-lg shadow-md p-6">
-      <div className="flex mb-4 justify-between items-center">
-        <h2 className="font-bold text-2xl">每小时天气预报</h2>
-        <div className="flex gap-2">
-          {metricOptions.map(option => (
-            <button
-              key={option.id}
-              onClick={() => setSelectedMetric(option.id)}
-              className={`px-3 py-1 text-sm rounded-full ${
-                selectedMetric === option.id
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              }`}
+    <div className="flex flex-col">
+      <div className="flex flex-wrap justify-center mb-4 gap-2">
+        {metricOptions.map((option) => (
+          <button
+            key={option.id}
+            className={`py-1 px-2 sm:py-2 sm:px-3 text-xs sm:text-sm rounded-full transition ${
+              selectedMetric === option.id
+                ? 'bg-google-blue text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+            }`}
+            onClick={() => setSelectedMetric(option.id)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      
+      <div className="h-56 sm:h-64 lg:h-72 mb-4 relative">
+        <Line data={prepareChartData()} options={chartOptions} />
+      </div>
+      
+      <div className="flex overflow-x-auto pb-3 -mx-1 px-1" ref={scrollContainerRef}>
+        {data.hours.map((hour, index) => {
+          const date = new Date(hour.time);
+          const nowHour = new Date().getHours();
+          const hourNumber = date.getHours();
+          
+          // 计算时间显示
+          const isMidnight = hourNumber === 0;
+          const isNoon = hourNumber === 12;
+          let timeLabel = `${hourNumber}:00`;
+          let dateLabel = '';
+          
+          if (isMidnight) {
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            dateLabel = `${month}/${day}`;
+            timeLabel = '00:00';
+          } else if (isNoon) {
+            timeLabel = '12:00';
+          }
+          
+          const isCurrentHour = new Date().getDate() === date.getDate() && hourNumber === nowHour;
+          
+          return (
+            <div
+              key={index}
+              ref={(el) => { hourItemRefs.current[index] = el; }}
+              className={getItemClassName(index)}
+              onClick={() => setHighlightedHourIndex(index)}
             >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      
-      <div className="h-[300px] w-full">
-        <Line 
-          options={chartOptions} 
-          data={prepareChartData()} 
-        />
-      </div>
-      
-      <div className="mt-6 overflow-x-auto" ref={scrollContainerRef}>
-        <div className="pb-2 gap-4 inline-flex">
-          {data && data.hours && data.hours.length > 0 ? (
-            data.hours.slice(0, 24).map((hour, index) => {
-              const weatherType = hour.weatherCondition.type || '';
-              const precipProbability = hour.weatherData.precipitationProbability.value;
-              const humidity = hour.weatherData.humidity.value;
-              return (
-                <div 
-                  key={index} 
-                  className={getItemClassName(index)}
-                  onMouseEnter={() => setHighlightedHourIndex(index)}
-                  onMouseLeave={() => setHighlightedHourIndex(null)}
-                  ref={el => {
-                    hourItemRefs.current[index] = el;
-                  }}
-                >
-                  <span className="font-medium text-sm">
-                    {formatTime(hour.time)}
-                  </span>
-                  {hour.weatherCondition && (
-                    <div className="flex flex-col my-1 items-center">
-                      <img 
-                        src={hour.weatherCondition.icon} 
-                        alt={hour.weatherCondition.text} 
-                        className="h-10 w-10"
-                      />
-                      <span className="text-xs text-center" style={{ 
-                        color: weatherType ? getWeatherTypeColor(weatherType) : 'inherit'
-                      }}>
-                        {hour.weatherCondition.typeText || hour.weatherCondition.text}
-                      </span>
-                    </div>
-                  )}
-                  <span className="font-bold">
-                    {formatTemperature(hour.weatherData.temperature.value, hour.weatherData.temperature.unit)}
-                  </span>
-                  
-                  <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-1 w-full px-1">
-                    <div className="flex flex-col items-center" title={getPrecipitationDescription(precipProbability)}>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">降水</span>
-                      <span className={`text-xs ${getPrecipitationStyle(precipProbability)}`}>
-                        {precipProbability}%
-                      </span>
-                    </div>
-                    <div className="flex flex-col items-center" title={getHumidityDescription(humidity)}>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">湿度</span>
-                      <span className={`text-xs ${getHumidityStyle(humidity)}`}>
-                        {humidity}%
-                      </span>
-                    </div>
-                    <div className="flex flex-col items-center col-span-2 mt-1">
-                      <span className="text-xs text-gray-500 dark:text-gray-400 text-center max-w-full truncate">
-                        {hour.weatherData.windDirection.text || ''}
-                        {hour.weatherData.windSpeed.value < 5 ? '' : 
-                          ` ${hour.weatherData.windSpeed.value} km/h`}
-                      </span>
-                    </div>
+              <div className="text-center mb-1">
+                {dateLabel && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    {dateLabel}
                   </div>
+                )}
+                <div className={`text-xs sm:text-sm font-medium ${isCurrentHour ? 'text-google-blue' : ''}`}>
+                  {isCurrentHour ? '现在' : timeLabel}
                 </div>
-              );
-            })
-          ) : (
-            <div className="text-center w-full py-4 text-gray-500 dark:text-gray-400">暂无每小时天气数据</div>
-          )}
-        </div>
+              </div>
+              
+              {/* 天气图标 */}
+              <div className="flex justify-center my-1">
+                {hour.weatherCondition?.icon ? (
+                  <img 
+                    src={hour.weatherCondition.icon} 
+                    alt={hour.weatherCondition.text || '天气图标'}
+                    className="h-8 w-8 sm:h-10 sm:w-10"
+                  />
+                ) : (
+                  <div className="h-8 w-8 sm:h-10 sm:w-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-full">
+                    <svg className="h-5 w-5 text-gray-400" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 3V4M12 20V21M4 12H3M21 12H20M6.3 6.3L5.5 5.5M18.7 6.3L19.5 5.5M17.7 17.7L18.5 18.5M6.3 17.7L5.5 18.5M16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8C14.2091 8 16 9.79086 16 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                )}
+              </div>
+              
+              <div className="text-sm sm:text-base font-medium text-center">
+                {formatTemperature(hour.weatherData.temperature.value, hour.weatherData.temperature.unit)}
+              </div>
+              
+              <div className="flex flex-col gap-1 mt-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xxs sm:text-xs text-gray-500 dark:text-gray-400">降水</span>
+                  <span 
+                    className={`text-xxs sm:text-xs font-medium ${getPrecipitationStyle(hour.weatherData.precipitationProbability.value)}`}
+                  >
+                    {hour.weatherData.precipitationProbability.value}%
+                  </span>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-xxs sm:text-xs text-gray-500 dark:text-gray-400">湿度</span>
+                  <span 
+                    className={`text-xxs sm:text-xs font-medium ${getHumidityStyle(hour.weatherData.humidity.value)}`}
+                  >
+                    {hour.weatherData.humidity.value}%
+                  </span>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-xxs sm:text-xs text-gray-500 dark:text-gray-400">风速</span>
+                  <span className="text-xxs sm:text-xs font-medium">
+                    {hour.weatherData.windSpeed.value} km/h
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
