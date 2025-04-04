@@ -45,7 +45,7 @@ gcloud run deploy $SERVICE_NAME \
 
 确保在Cloud Run服务设置中添加所有必要的环境变量：
 
-- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`：您的Google Maps API密钥
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`：您的Google Maps API密钥（前端和后端API都会使用）
 
 您可以通过以下命令更新环境变量：
 
@@ -54,6 +54,30 @@ gcloud run services update $SERVICE_NAME \
   --region $REGION \
   --set-env-vars "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_api_key_here"
 ```
+
+#### 环境变量问题排查
+
+如果您遇到"缺少 Google Maps API Key"的错误，可能是由于以下原因：
+
+1. **确认环境变量已正确设置**：
+   在Cloud Run控制台中，检查您的服务配置中是否有正确设置环境变量。
+
+2. **检查变量名称是否正确**：
+   确保环境变量名称为 `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`。
+
+3. **重新部署应用**：
+   有时候需要重新部署应用才能使环境变量生效：
+   ```bash
+   gcloud run deploy $SERVICE_NAME \
+     --image gcr.io/$PROJECT_ID/$SERVICE_NAME \
+     --platform managed \
+     --region $REGION \
+     --allow-unauthenticated \
+     --set-env-vars "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_api_key_here"
+   ```
+
+4. **验证API密钥是否有效**：
+   确保您的Google Maps API密钥有效，并且已启用了必要的API服务（Maps JavaScript API）。
 
 ### 4. 访问应用
 

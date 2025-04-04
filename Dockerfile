@@ -13,6 +13,9 @@ RUN npm ci
 # 复制其余文件
 COPY . .
 
+# 赋予入口脚本执行权限
+RUN chmod +x /app/docker-entrypoint.sh
+
 # 构建应用
 RUN npm run build
 
@@ -22,6 +25,9 @@ ENV NODE_ENV=production
 
 # 暴露端口
 EXPOSE 8080
+
+# 设置入口点脚本
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
 # 启动应用
 CMD ["npm", "start"] 

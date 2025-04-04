@@ -16,6 +16,7 @@ import {
 import { Line } from 'react-chartjs-2';
 import { HourlyForecast as HourlyForecastType } from '@/types/weather';
 import { formatTemperature } from '@/lib/weatherUtils';
+import Image from 'next/image';
 
 // 注册Chart.js组件
 ChartJS.register(
@@ -385,10 +386,12 @@ const HourlyForecast: React.FC<HourlyForecastProps> = ({ data, isLoading }) => {
               {/* 天气图标 */}
               <div className="flex justify-center my-1">
                 {hour.weatherCondition?.icon ? (
-                  <img 
+                  <Image 
                     src={hour.weatherCondition.icon} 
                     alt={hour.weatherCondition.text || '天气图标'}
                     className="h-8 w-8 sm:h-10 sm:w-10"
+                    width={40}
+                    height={40}
                   />
                 ) : (
                   <div className="h-8 w-8 sm:h-10 sm:w-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-full">

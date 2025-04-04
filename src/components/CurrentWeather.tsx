@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { CurrentWeather as CurrentWeatherType } from '@/types/weather';
 import {
   getUVIndexLevel,
@@ -67,10 +68,12 @@ const CurrentWeather: React.FC<CurrentWeatherProps> = ({ data, isLoading }) => {
         </div>
         {data.weatherCondition && (
           <div className="flex flex-row sm:flex-col items-center mt-2 sm:mt-0">
-            <img 
+            <Image 
               src={data.weatherCondition.icon} 
               alt={data.weatherCondition.text} 
               className="h-12 w-12 sm:h-16 sm:w-16"
+              width={64}
+              height={64}
             />
             <span className="font-medium text-sm text-center ml-3 sm:ml-0">
               {data.weatherCondition.typeText || data.weatherCondition.text}

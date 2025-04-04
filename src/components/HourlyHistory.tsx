@@ -16,6 +16,7 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import { HourlyHistory as HourlyHistoryType } from '@/types/weather';
+import Image from 'next/image';
 
 // 注册Chart.js组件
 ChartJS.register(
@@ -323,10 +324,12 @@ const HourlyHistory: React.FC<HourlyHistoryProps> = ({ data, isLoading }) => {
                 <td className="py-2">
                   {hour.weatherCondition && (
                     <div className="flex items-center">
-                      <img 
+                      <Image 
                         src={hour.weatherCondition.icon} 
                         alt={hour.weatherCondition.text} 
                         className="w-6 h-6 mr-1"
+                        width={24}
+                        height={24}
                       />
                       <span>{hour.weatherCondition.typeText || hour.weatherCondition.text}</span>
                     </div>

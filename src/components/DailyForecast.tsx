@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { DailyForecast as DailyForecastType } from '@/types/weather';
 import {
   getWeatherTypeColor,
@@ -99,10 +100,12 @@ const DailyForecast: React.FC<DailyForecastProps> = ({ data, isLoading }) => {
                   </div>
                   {day.weatherCondition && (
                     <div className="flex items-center space-x-2">
-                      <img 
+                      <Image 
                         src={day.weatherCondition.icon} 
                         alt={day.weatherCondition.text} 
                         className="w-10 h-10"
+                        width={40}
+                        height={40}
                       />
                       <span 
                         className="text-sm"

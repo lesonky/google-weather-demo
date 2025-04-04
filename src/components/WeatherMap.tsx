@@ -1,6 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
 import { LocationData } from '@/types/weather';
+import getConfig from 'next/config';
+
+// 获取运行时配置
+const { publicRuntimeConfig } = getConfig();
 
 interface WeatherMapProps {
   location: LocationData | null;
@@ -94,7 +98,7 @@ const darkModeMapStyles = [
 
 // 创建一个带API密钥的Loader实例
 const mapLoader = new Loader({
-  apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || '',
+  apiKey: publicRuntimeConfig?.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
   version: 'weekly',
   libraries: ['places']
 });
@@ -105,7 +109,7 @@ const WeatherMap: React.FC<WeatherMapProps> = ({ location }) => {
   const markerRef = useRef<google.maps.Marker | null>(null);
   const googleRef = useRef<typeof google | null>(null);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || '';
+  const apiKey = publicRuntimeConfig?.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
   // 检测系统主题
   useEffect(() => {
@@ -259,7 +263,7 @@ const WeatherMap: React.FC<WeatherMapProps> = ({ location }) => {
       {!apiKey && (
         <div className="absolute inset-0 flex items-center justify-center z-10 bg-red-50 dark:bg-red-900/20">
           <p className="text-sm text-center p-4 max-w-xs text-red-600 dark:text-red-400">
-            缺少 Google Maps API Key。请在环境变量中设置 NEXT_PUBLIC_GOOGLE_MAPS_KEY。
+            缺少 Google Maps API Key。请在环境变量中设置 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY。
           </p>
         </div>
       )}

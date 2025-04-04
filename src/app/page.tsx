@@ -45,39 +45,6 @@ const HourlyForecast = dynamic(() => import('@/components/HourlyForecast'));
 const DailyForecast = dynamic(() => import('@/components/DailyForecast'));
 const HourlyHistory = dynamic(() => import('@/components/HourlyHistory'));
 
-// 添加Geocoding API结果的接口
-interface GeocodeResult {
-  formatted_address: string;
-  types: string[];
-  geometry: {
-    location: {
-      lat: number;
-      lng: number;
-    };
-    viewport: {
-      northeast: {
-        lat: number;
-        lng: number;
-      };
-      southwest: {
-        lat: number;
-        lng: number;
-      };
-    };
-  };
-  place_id: string;
-  address_components: Array<{
-    long_name: string;
-    short_name: string;
-    types: string[];
-  }>;
-}
-
-interface GeocodeResponse {
-  results: GeocodeResult[];
-  status: string;
-}
-
 // 生成完整的图标URL
 const generateIconUrl = (iconBaseUri: string, isDarkMode: boolean = false): string => {
   // 检查URL是否已经有_dark后缀
@@ -805,8 +772,15 @@ export default function Home() {
     };
   }, []);
 
+  // 修复 useEffect 中的 fetchWeatherData 调用
+  useEffect(() => {
+    if (location) {
+      fetchWeatherData(location.lat, location.lng);
+    }
+  }, [location, fetchWeatherData]);
+
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
       <header 
         className={`fixed-header ${headerShadow ? 'fixed-header-shadow' : ''} px-4 py-3 sm:p-4 text-white w-full`}
         style={{
@@ -814,8 +788,8 @@ export default function Home() {
         }}
       >
         <div className="container flex flex-col mx-auto justify-between items-center sm:flex-row">
-          <div className="flex items-center mb-2 sm:mb-0">
-            <svg className="h-6 w-6 sm:h-8 sm:w-8 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div className="flex mb-2 items-center sm:mb-0">
+            <svg className="h-6 mr-2 w-6 sm:h-8 sm:w-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 3V4M12 20V21M4 12H3M21 12H20M6.3 6.3L5.5 5.5M18.7 6.3L19.5 5.5M17.7 17.7L18.5 18.5M6.3 17.7L5.5 18.5M16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8C14.2091 8 16 9.79086 16 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             <h1 className="font-normal text-xl sm:text-2xl">Google 天气</h1>
@@ -956,8 +930,8 @@ export default function Home() {
       <div className="h-[80px] sm:h-[72px]"></div>
       
       <main style={{ background: 'var(--main-bg)' }}>
-        <div className="container mx-auto px-4 py-3 sm:p-4">
-          <div className="w-full mx-auto mb-6">
+        <div className="container mx-auto py-3 px-4 sm:p-4">
+          <div className="mx-auto mb-6 w-full">
             <LocationSearch 
               onLocationChange={handleLocationChange} 
               recentSearches={searchTerms} 
@@ -972,12 +946,12 @@ export default function Home() {
           )}
           
           <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
-            <div className="lg:col-span-1 order-2 lg:order-1">
+            <div className="order-2 lg:order-1 lg:col-span-1">
               <WeatherMap location={location} />
               
               <div className="mt-6">
                 {location && (
-                  <h2 className="font-normal text-lg sm:text-xl mb-2 text-google-gray-800 break-words">
+                  <h2 className="font-normal text-lg mb-2 text-google-gray-800 break-words sm:text-xl">
                     {location.address || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
                   </h2>
                 )}
@@ -985,12 +959,12 @@ export default function Home() {
               </div>
             </div>
             
-            <div className="lg:col-span-2 order-1 lg:order-2 mb-4 lg:mb-0">
+            <div className="order-1 mb-4 lg:order-2 lg:mb-0 lg:col-span-2">
               <div 
                 className="rounded-lg shadow-sm p-3 sm:p-4" 
                 style={{ background: 'var(--card-background)' }}
               >
-                <div className="flex overflow-x-auto -mx-2 px-2 pb-2">
+                <div className="flex -mx-2 px-2 pb-2 overflow-x-auto">
                   <button
                     className={`py-2 px-3 sm:px-4 font-medium whitespace-nowrap flex-shrink-0 ${
                       activeTab === 'hourly' 
@@ -1049,7 +1023,7 @@ export default function Home() {
       <div className="footer-spacer"></div>
       
       <footer 
-        className="fixed-footer p-4 text-white w-full"
+        className="text-white w-full p-4 fixed-footer"
         style={{ background: 'var(--footer-bg)' }}
       >
         <div className="container mx-auto">
