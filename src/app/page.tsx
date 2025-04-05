@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import LocationSearch from '@/components/LocationSearch';
 import ErrorDisplay from '@/components/ErrorDisplay';
 import { 
@@ -40,10 +41,10 @@ const WeatherMap = dynamic(() => import('@/components/WeatherMap'), {
 });
 
 // 动态导入图表组件
-const CurrentWeather = dynamic(() => import('@/components/CurrentWeather'));
-const HourlyForecast = dynamic(() => import('@/components/HourlyForecast'));
-const DailyForecast = dynamic(() => import('@/components/DailyForecast'));
-const HourlyHistory = dynamic(() => import('@/components/HourlyHistory'));
+const CurrentWeather = dynamic(() => import('@/components/CurrentWeather'), { ssr: false });
+const HourlyForecast = dynamic(() => import('@/components/HourlyForecast'), { ssr: false });
+const DailyForecast = dynamic(() => import('@/components/DailyForecast'), { ssr: false });
+const HourlyHistory = dynamic(() => import('@/components/HourlyHistory'), { ssr: false });
 
 // 生成完整的图标URL
 const generateIconUrl = (iconBaseUri: string, isDarkMode: boolean = false): string => {
@@ -393,12 +394,20 @@ export default function Home() {
   const [hourlyHistory, setHourlyHistory] = useState<HourlyHistoryType | null>(null);
   const [apiError, setApiError] = useState<Error | ApiError | null>(null);
   
+  // 添加组件加载状态
+  const [componentsLoaded, setComponentsLoaded] = useState<boolean>(false);
+  
   const themeMenuRef = React.useRef<HTMLDivElement>(null);
   const themeButtonRef = React.useRef<HTMLButtonElement>(null);
   
   const [headerShadow, setHeaderShadow] = useState<boolean>(false);
   
   const [searchTerms, setSearchTerms] = useState<string[]>([]);
+  
+  // 添加位置错误状态
+  const [locationError, setLocationError] = useState<boolean>(false);
+  const [locationPermissionDenied, setLocationPermissionDenied] = useState<boolean>(false);
+  const [locationAttempted, setLocationAttempted] = useState<boolean>(false);
   
   useEffect(() => {
     setIsMounted(true);
@@ -496,6 +505,12 @@ export default function Home() {
   // 获取用户地理位置并初始化数据
   useEffect(() => {
     if (!isMounted) return;
+    
+    // 如果已经尝试过获取位置，不要重复
+    if (locationAttempted) return;
+    
+    // 标记已尝试获取位置
+    setLocationAttempted(true);
 
     // 尝试从存储中恢复上次位置
     const savedLocation = localStorage.getItem('lastLocation');
@@ -503,7 +518,6 @@ export default function Home() {
       try {
         const locationData = JSON.parse(savedLocation) as LocationData;
         setLocation(locationData);
-        // 不在这里直接调用 fetchWeatherData，而是通过 location 变化触发
         return; // 如果成功恢复位置，则不需要请求地理位置
       } catch (e) {
         console.error('无法解析保存的位置:', e);
@@ -514,57 +528,81 @@ export default function Home() {
     // 获取用户当前位置
     if (navigator.geolocation) {
       setLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          
-          // 尝试获取位置名称
-          try {
-            // 使用后端API进行反向地理编码
-            const response = await fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`);
-            const data = await response.json();
-            
-            if (data.error) {
-              throw new Error(data.error);
+      
+      try {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            try {
+              const lat = position.coords.latitude;
+              const lng = position.coords.longitude;
+              
+              // 尝试获取位置名称
+              try {
+                // 使用后端API进行反向地理编码
+                const response = await fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                  throw new Error(data.error);
+                }
+                
+                const locationData: LocationData = {
+                  lat,
+                  lng,
+                  address: data.address || `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+                };
+                
+                // 保存位置到本地存储
+                localStorage.setItem('lastLocation', JSON.stringify(locationData));
+                
+                setLocation(locationData);
+              } catch (error) {
+                console.error('获取位置名称失败:', error);
+                // 即使获取位置名称失败，仍然使用坐标获取天气
+                const locationData: LocationData = {
+                  lat,
+                  lng,
+                  address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+                };
+                localStorage.setItem('lastLocation', JSON.stringify(locationData));
+                setLocation(locationData);
+              }
+            } catch (error) {
+              console.error('处理位置信息失败:', error);
+              setLoading(false);
+              setLocationError(true);
             }
+          },
+          (error) => {
+            console.error('获取位置失败:', error);
+            setLoading(false);
             
-            const locationData: LocationData = {
-              lat,
-              lng,
-              address: data.address || `${lat.toFixed(4)}, ${lng.toFixed(4)}`
-            };
-            
-            // 保存位置到本地存储
-            localStorage.setItem('lastLocation', JSON.stringify(locationData));
-            
-            setLocation(locationData);
-            // 不在这里直接调用 fetchWeatherData，而是通过 location 变化触发
-          } catch (error) {
-            console.error('获取位置名称失败:', error);
-            // 即使获取位置名称失败，仍然使用坐标获取天气
-            const locationData: LocationData = {
-              lat,
-              lng,
-              address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`
-            };
-            setLocation(locationData);
-            // 不在这里直接调用 fetchWeatherData，而是通过 location 变化触发
+            // 处理特定的地理位置错误
+            if (error.code === 1) {
+              // 用户拒绝了授权
+              setLocationPermissionDenied(true);
+            } else {
+              // 其他错误
+              setLocationError(true);
+            }
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 60000
           }
-        },
-        (error) => {
-          console.error('获取位置失败:', error);
-          setLoading(false);
-          // 地理位置获取失败时不显示错误，等待用户手动输入位置
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 60000
-        }
-      );
+        );
+      } catch (error) {
+        console.error('调用地理位置API失败:', error);
+        setLoading(false);
+        setLocationError(true);
+      }
+    } else {
+      console.error('浏览器不支持地理位置API');
+      setLoading(false);
+      setLocationError(true);
     }
-  }, [isMounted]); // 移除 fetchWeatherData 依赖项
+  }, [isMounted, locationAttempted]); // 添加新的依赖项
 
   // 当位置变化时获取天气数据
   useEffect(() => {
@@ -713,6 +751,14 @@ export default function Home() {
     setThemeMenuOpen(false);
   };
   
+  // 处理标签切换，添加防抖
+  const handleTabChange = useCallback((tab: string) => {
+    // 通过 setTimeout 确保组件加载和卸载的时序正确
+    setTimeout(() => {
+      setActiveTab(tab);
+    }, 0);
+  }, []);
+  
   // 处理和分类错误
   const handleApiError = (error: unknown): void => {
     console.error('API错误:', error);
@@ -772,12 +818,33 @@ export default function Home() {
     };
   }, []);
 
-  // 修复 useEffect 中的 fetchWeatherData 调用
+  // 设置组件加载状态
   useEffect(() => {
-    if (location) {
-      fetchWeatherData(location.lat, location.lng);
+    if (isMounted) {
+      // 确保组件已完全加载
+      setTimeout(() => {
+        setComponentsLoaded(true);
+      }, 100);
     }
-  }, [location, fetchWeatherData]);
+    return () => {
+      setComponentsLoaded(false);
+    };
+  }, [isMounted]);
+  
+  // 用于安全渲染的函数
+  const safeRender = (component: React.ReactNode): React.ReactNode => {
+    if (!isMounted || !componentsLoaded) {
+      return (
+        <div className="animate-pulse p-4">
+          <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
+          <div className="h-40 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+          <div className="h-40 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        </div>
+      );
+    }
+    
+    return component;
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -793,6 +860,17 @@ export default function Home() {
               <path d="M12 3V4M12 20V21M4 12H3M21 12H20M6.3 6.3L5.5 5.5M18.7 6.3L19.5 5.5M17.7 17.7L18.5 18.5M6.3 17.7L5.5 18.5M16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8C14.2091 8 16 9.79086 16 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             <h1 className="font-normal text-xl sm:text-2xl">Google 天气</h1>
+          </div>
+          
+          <div className="flex-row text-center text-xs text-white/80 hidden items-center sm:flex sm:text-sm">
+            <Image 
+              src="/mci_logo.png" 
+              alt="Master Concept Logo" 
+              width={64} 
+              height={64} 
+              className="mr-3" 
+            />
+            <p>由 Master Concept 开发，演示 Google Maps Platform Weather API</p>
           </div>
           
           <div className="flex items-center">
@@ -931,6 +1009,29 @@ export default function Home() {
       
       <main style={{ background: 'var(--main-bg)' }}>
         <div className="container mx-auto py-3 px-4 sm:p-4">
+          {/* 位置权限错误提示 */}
+          {locationPermissionDenied && !location && (
+            <div className="border rounded-lg bg-yellow-100 border-yellow-200 mb-4 p-3 text-yellow-800 dark:bg-yellow-800/30 dark:border-yellow-700 dark:text-yellow-200">
+              <div className="flex items-center">
+                <svg className="flex-shrink-0 h-5 mr-2 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>定位权限已拒绝，请手动搜索位置获取天气数据。</span>
+              </div>
+            </div>
+          )}
+          
+          {locationError && !location && !locationPermissionDenied && (
+            <div className="border rounded-lg bg-red-100 border-red-200 mb-4 p-3 text-red-800 dark:bg-red-800/30 dark:border-red-700 dark:text-red-200">
+              <div className="flex items-center">
+                <svg className="flex-shrink-0 h-5 mr-2 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>获取位置信息失败，请手动搜索位置获取天气数据。</span>
+              </div>
+            </div>
+          )}
+
           <div className="mx-auto mb-6 w-full">
             <LocationSearch 
               onLocationChange={handleLocationChange} 
@@ -947,7 +1048,11 @@ export default function Home() {
           
           <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
             <div className="order-2 lg:order-1 lg:col-span-1">
-              <WeatherMap location={location} />
+              {isMounted && (
+                <div key="map-component">
+                  <WeatherMap location={location} />
+                </div>
+              )}
               
               <div className="mt-6">
                 {location && (
@@ -955,7 +1060,7 @@ export default function Home() {
                     {location.address || `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`}
                   </h2>
                 )}
-                <CurrentWeather data={currentWeather} isLoading={loading} />
+                {safeRender(<CurrentWeather data={currentWeather} isLoading={loading} />)}
               </div>
             </div>
             
@@ -975,7 +1080,7 @@ export default function Home() {
                       color: activeTab === 'hourly' ? 'var(--tab-active)' : 'var(--tab-inactive)',
                       borderColor: activeTab === 'hourly' ? 'var(--tab-border)' : 'transparent' 
                     }}
-                    onClick={() => setActiveTab('hourly')}
+                    onClick={() => handleTabChange('hourly')}
                   >
                     每小时预报
                   </button>
@@ -989,7 +1094,7 @@ export default function Home() {
                       color: activeTab === 'daily' ? 'var(--tab-active)' : 'var(--tab-inactive)',
                       borderColor: activeTab === 'daily' ? 'var(--tab-border)' : 'transparent' 
                     }}
-                    onClick={() => setActiveTab('daily')}
+                    onClick={() => handleTabChange('daily')}
                   >
                     每日预报
                   </button>
@@ -1003,16 +1108,20 @@ export default function Home() {
                       color: activeTab === 'history' ? 'var(--tab-active)' : 'var(--tab-inactive)',
                       borderColor: activeTab === 'history' ? 'var(--tab-border)' : 'transparent' 
                     }}
-                    onClick={() => setActiveTab('history')}
+                    onClick={() => handleTabChange('history')}
                   >
                     历史记录
                   </button>
                 </div>
                 
                 <div className="mt-4">
-                  {activeTab === 'hourly' && <HourlyForecast data={hourlyForecast} isLoading={loading} />}
-                  {activeTab === 'daily' && <DailyForecast data={dailyForecast} isLoading={loading} />}
-                  {activeTab === 'history' && <HourlyHistory data={hourlyHistory} isLoading={loading} />}
+                  {isMounted && (
+                    <>
+                      {activeTab === 'hourly' && safeRender(<HourlyForecast data={hourlyForecast} isLoading={loading} />)}
+                      {activeTab === 'daily' && safeRender(<DailyForecast data={dailyForecast} isLoading={loading} />)}
+                      {activeTab === 'history' && safeRender(<HourlyHistory data={hourlyHistory} isLoading={loading} />)}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -1029,12 +1138,34 @@ export default function Home() {
         <div className="container mx-auto">
           <div className="flex flex-col justify-between items-center md:flex-row">
             <div className="mb-4 md:mb-0">
-              <h3 className="font-normal text-lg mb-2">Google 天气</h3>
+              <div className="flex mb-2 items-center">
+                <Image 
+                  src="/mci_logo.png" 
+                  alt="Master Concept Logo" 
+                  width={56} 
+                  height={56} 
+                  className="mr-3" 
+                />
+                <h3 className="font-normal text-lg">Google 天气</h3>
+              </div>
               <p style={{ color: 'var(--footer-text-muted)' }}>
                 基于 Google Maps Platform Weather API 的全球天气信息服务
               </p>
+              <p style={{ color: 'var(--footer-text-muted)', marginTop: '0.5rem' }}>
+                由 Master Concept 开发 | 官网: <a href="https://masterconcept.ai" className="transition-colors underline hover:text-white" target="_blank" rel="noopener noreferrer">masterconcept.ai</a>
+              </p>
+              <p style={{ color: 'var(--footer-text-muted)', marginTop: '0.25rem' }}>
+                对 Weather API 感兴趣？欢迎联系: <a href="mailto:eddie.shao@masterconcept.ai" className="transition-colors underline hover:text-white">eddie.shao@masterconcept.ai</a>
+              </p>
             </div>
-            <div>
+            <div className="flex flex-col items-end">
+              <Image 
+                src="/mci_logo.png" 
+                alt="Master Concept Logo" 
+                width={80} 
+                height={80} 
+                className="mb-2 hidden md:block" 
+              />
               <p style={{ color: 'var(--footer-text-muted)' }}>© {new Date().getFullYear()} Google Weather</p>
             </div>
           </div>

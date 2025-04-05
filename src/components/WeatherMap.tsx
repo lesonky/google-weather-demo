@@ -94,7 +94,7 @@ const darkModeMapStyles = [
 
 // 创建一个带API密钥的Loader实例
 const mapLoader = new Loader({
-  apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+  apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyAdut5XSt2dbcQE8B5wZHVtvdsSjtRkGF8',
   version: 'weekly',
   libraries: ['places']
 });
@@ -105,10 +105,44 @@ const WeatherMap: React.FC<WeatherMapProps> = ({ location }) => {
   const markerRef = useRef<google.maps.Marker | null>(null);
   const googleRef = useRef<typeof google | null>(null);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyAdut5XSt2dbcQE8B5wZHVtvdsSjtRkGF8';
+  
+  // 添加组件挂载状态引用
+  const isMountedRef = useRef<boolean>(false);
+  const [mapError, setMapError] = useState<boolean>(false);
+
+  // 组件挂载状态管理
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    return () => {
+      // 组件卸载时，清除引用
+      isMountedRef.current = false;
+      
+      // 清理地图实例和标记
+      if (markerRef.current) {
+        markerRef.current.setMap(null);
+        markerRef.current = null;
+      }
+      
+      if (mapInstanceRef.current) {
+        // 尝试销毁地图实例 (虽然Google Maps没有官方的销毁方法)
+        const mapDiv = mapInstanceRef.current.getDiv();
+        if (mapDiv) {
+          // 尝试清空地图容器
+          while (mapDiv.firstChild) {
+            mapDiv.removeChild(mapDiv.firstChild);
+          }
+        }
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
 
   // 检测系统主题
   useEffect(() => {
+    if (!isMountedRef.current) return;
+    
     // 检测当前主题模式
     const checkTheme = () => {
       if (typeof document !== 'undefined') {
@@ -127,6 +161,11 @@ const WeatherMap: React.FC<WeatherMapProps> = ({ location }) => {
     
     // 监听主题变化
     const observer = new MutationObserver((mutations) => {
+      if (!isMountedRef.current) {
+        observer.disconnect();
+        return;
+      }
+      
       mutations.forEach((mutation) => {
         if (
           mutation.type === 'attributes' &&
@@ -149,21 +188,36 @@ const WeatherMap: React.FC<WeatherMapProps> = ({ location }) => {
 
   // 当主题模式变化时更新地图样式
   useEffect(() => {
+    if (!isMountedRef.current) return;
+    
     if (mapInstanceRef.current && googleRef.current) {
-      mapInstanceRef.current.setOptions({
-        styles: isDarkMode ? darkModeMapStyles : lightModeMapStyles
-      });
+      try {
+        mapInstanceRef.current.setOptions({
+          styles: isDarkMode ? darkModeMapStyles : lightModeMapStyles
+        });
+      } catch (error) {
+        console.error('更新地图样式时出错:', error);
+      }
     }
   }, [isDarkMode]);
 
   useEffect(() => {
+    if (!isMountedRef.current || !mapRef.current || !apiKey) return;
+    
+    let isInitializing = true;
+    
     const initMap = async () => {
-      if (!mapRef.current || !apiKey) return;
-
       try {
         // 导入maps库
         await mapLoader.load();
+        
+        // 如果组件已卸载，不继续执行
+        if (!isMountedRef.current) return;
+        
         googleRef.current = window.google;
+        
+        // 如果地图容器被移除，不继续执行
+        if (!mapRef.current) return;
         
         const defaultLocation = location || { lat: 39.9042, lng: 116.4074 }; // 默认北京位置
         
@@ -181,46 +235,80 @@ const WeatherMap: React.FC<WeatherMapProps> = ({ location }) => {
           fullscreenControl: false
         };
         
+        // 创建地图实例
         mapInstanceRef.current = new google.maps.Map(mapRef.current, mapOptions);
+        
+        // 如果组件已卸载，不继续执行
+        if (!isMountedRef.current) return;
         
         if (location) {
           // 添加标记
-          markerRef.current = new google.maps.Marker({
-            position: location,
-            map: mapInstanceRef.current,
-            title: location.address || '所选位置',
-            animation: google.maps.Animation.DROP
-          });
-          
-          // 设置地图中心
-          mapInstanceRef.current.setCenter(location);
-          mapInstanceRef.current.setZoom(10);
+          try {
+            markerRef.current = new google.maps.Marker({
+              position: location,
+              map: mapInstanceRef.current,
+              title: location.address || '所选位置',
+              animation: google.maps.Animation.DROP
+            });
+            
+            // 设置地图中心
+            mapInstanceRef.current.setCenter(location);
+            mapInstanceRef.current.setZoom(10);
+          } catch (markerError) {
+            console.error('创建地图标记时出错:', markerError);
+          }
         }
+        
+        isInitializing = false;
       } catch (error) {
         console.error('加载Google Maps时出错:', error);
+        if (isMountedRef.current) {
+          setMapError(true);
+        }
+        isInitializing = false;
       }
     };
 
     initMap();
-  }, [isDarkMode, apiKey, location]);
+    
+    // 添加清理函数
+    return () => {
+      // 如果初始化过程中组件被卸载，标记为不再挂载
+      if (isInitializing) {
+        isMountedRef.current = false;
+      }
+    };
+  }, [isDarkMode, apiKey]);
 
   useEffect(() => {
+    if (!isMountedRef.current || !location || !mapInstanceRef.current) return;
+    
+    let isUpdating = true;
+    
     const updateMap = async () => {
-      if (!location || !mapInstanceRef.current) return;
-      
-      mapInstanceRef.current.setCenter(location);
-      
-      // 如果已经有标记，则移除它
-      if (markerRef.current) {
-        markerRef.current.setMap(null);
-      }
-      
       try {
+        if (!isMountedRef.current) return;
+        
+        mapInstanceRef.current?.setCenter(location);
+        
+        // 如果已经有标记，则移除它
+        if (markerRef.current) {
+          markerRef.current.setMap(null);
+          markerRef.current = null;
+        }
+        
         // 确保google对象已加载
         if (!googleRef.current && apiKey) {
           await mapLoader.load();
+          
+          // 如果组件已卸载，不继续执行
+          if (!isMountedRef.current) return;
+          
           googleRef.current = window.google;
         }
+        
+        // 如果组件已卸载或地图实例不存在，不继续执行
+        if (!isMountedRef.current || !mapInstanceRef.current) return;
         
         // 创建新标记
         markerRef.current = new google.maps.Marker({
@@ -229,41 +317,49 @@ const WeatherMap: React.FC<WeatherMapProps> = ({ location }) => {
           title: location.address || '所选位置',
           animation: google.maps.Animation.DROP
         });
+        
+        isUpdating = false;
       } catch (error) {
         console.error('更新地图标记时出错:', error);
+        isUpdating = false;
       }
     };
     
     if (googleRef.current) {
       updateMap();
     }
+    
+    // 添加清理函数
+    return () => {
+      // 如果更新过程中组件被卸载，标记为不再挂载
+      if (isUpdating) {
+        isMountedRef.current = false;
+      }
+    };
   }, [location, apiKey]);
+
+  if (mapError) {
+    return (
+      <div 
+        className="rounded-lg h-[250px] flex items-center justify-center bg-gray-100 dark:bg-gray-800 shadow-lg w-full transition-colors duration-300 overflow-hidden sm:h-[300px] md:h-[400px]"
+      >
+        <div className="text-center p-4">
+          <p className="text-red-500 mb-2">加载地图时出错</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">请检查网络连接或稍后再试</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 
-      className="rounded-lg h-[250px] sm:h-[300px] md:h-[400px] shadow-lg w-full overflow-hidden transition-colors duration-300"
+      className="rounded-lg h-[250px] shadow-lg w-full transition-colors duration-300 overflow-hidden sm:h-[300px] md:h-[400px]"
       ref={mapRef}
       style={{
         position: 'relative',
         background: isDarkMode ? '#222' : '#f1f3f4'
       }}
-    >
-      {!location && (
-        <div className="absolute inset-0 flex items-center justify-center z-10">
-          <p className="text-sm text-center p-4 max-w-xs" style={{ color: isDarkMode ? '#e8eaed' : '#5f6368' }}>
-            选择一个位置以查看地图
-          </p>
-        </div>
-      )}
-      
-      {!apiKey && (
-        <div className="absolute inset-0 flex items-center justify-center z-10 bg-red-50 dark:bg-red-900/20">
-          <p className="text-sm text-center p-4 max-w-xs text-red-600 dark:text-red-400">
-            缺少 Google Maps API Key。请在环境变量中设置 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY。
-          </p>
-        </div>
-      )}
-    </div>
+    />
   );
 };
 
