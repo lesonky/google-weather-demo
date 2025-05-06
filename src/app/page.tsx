@@ -5,12 +5,12 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import LocationSearch from '@/components/LocationSearch';
 import ErrorDisplay from '@/components/ErrorDisplay';
-import { 
-  LocationData, 
+import {
+  LocationData,
   CurrentWeather as CurrentWeatherType,
   HourlyForecast as HourlyForecastType,
   DailyForecast as DailyForecastType,
-  HourlyHistory as HourlyHistoryType
+  HourlyHistory as HourlyHistoryType,
 } from '@/types/weather';
 import {
   getCurrentWeather,
@@ -22,13 +22,10 @@ import {
   HourlyForecastResponse,
   HourlyHistoryResponse,
   ApiError,
-  WeatherCondition
+  WeatherCondition,
 } from '@/lib/api';
 import React from 'react';
-import {
-  getWeatherTypeText,
-  getWindDirectionText 
-} from '@/lib/weatherUtils';
+import { getWeatherTypeText, getWindDirectionText } from '@/lib/weatherUtils';
 
 // 动态导入地图组件，避免SSR问题
 const WeatherMap = dynamic(() => import('@/components/WeatherMap'), {
@@ -50,7 +47,7 @@ const HourlyHistory = dynamic(() => import('@/components/HourlyHistory'), { ssr:
 const generateIconUrl = (iconBaseUri: string, isDarkMode: boolean = false): string => {
   // 检查URL是否已经有_dark后缀
   const hasDarkSuffix = iconBaseUri.includes('_dark');
-  
+
   // 移除现有的_dark后缀和.svg扩展名
   let baseUri = iconBaseUri;
   if (hasDarkSuffix) {
@@ -59,7 +56,7 @@ const generateIconUrl = (iconBaseUri: string, isDarkMode: boolean = false): stri
   if (baseUri.endsWith('.svg')) {
     baseUri = baseUri.substring(0, baseUri.length - 4);
   }
-  
+
   // 检查当前文档主题 - 仅在客户端环境中执行
   let useDarkTheme = isDarkMode;
   if (typeof window !== 'undefined' && typeof document !== 'undefined') {
@@ -78,12 +75,12 @@ const generateIconUrl = (iconBaseUri: string, isDarkMode: boolean = false): stri
       }
     }
   }
-  
+
   // 如果需要深色模式，添加 _dark 后缀
   const themeSuffix = useDarkTheme ? '_dark' : '';
   // 图标文件扩展名
   const extension = '.svg';
-  
+
   // 构建完整URL
   return `${baseUri}${themeSuffix}${extension}`;
 };
@@ -95,11 +92,11 @@ const extractWeatherType = (weatherCondition: WeatherCondition): string => {
   if (weatherCondition?.type) {
     return weatherCondition.type;
   }
-  
+
   // 如果找不到明确的type字段，尝试从其他字段推断
   if (weatherCondition?.description?.text) {
     const text = weatherCondition.description.text.toUpperCase();
-    
+
     // 基于描述文本推断天气类型
     if (text.includes('晴')) return 'CLEAR';
     if (text.includes('多云') && text.includes('局部')) return 'PARTLY_CLOUDY';
@@ -117,7 +114,7 @@ const extractWeatherType = (weatherCondition: WeatherCondition): string => {
     if (text.includes('阵雪')) return 'SNOW_SHOWERS';
     if (text.includes('大风')) return 'WINDY';
   }
-  
+
   // 如果无法确定，返回默认值
   return 'TYPE_UNSPECIFIED';
 };
@@ -126,7 +123,7 @@ const extractWeatherType = (weatherCondition: WeatherCondition): string => {
 const convertCurrentWeather = (data: ApiCurrentWeather, isDarkMode: boolean = false): CurrentWeatherType => {
   // 获取实际的天气类型
   const weatherType = extractWeatherType(data.weatherCondition);
-  
+
   return {
     observationTime: data.currentTime,
     temperature: {
@@ -185,10 +182,10 @@ const convertCurrentWeather = (data: ApiCurrentWeather, isDarkMode: boolean = fa
 };
 
 const convertHourlyForecast = (data: HourlyForecastResponse, isDarkMode: boolean = false): HourlyForecastType => {
-  const hourlyData = data.forecastHours.map(hour => {
+  const hourlyData = data.forecastHours.map((hour) => {
     // 获取真实的天气类型
     const weatherType = extractWeatherType(hour.weatherCondition);
-    
+
     return {
       time: hour.interval.startTime,
       weatherData: {
@@ -247,18 +244,18 @@ const convertHourlyForecast = (data: HourlyForecastResponse, isDarkMode: boolean
       },
     };
   });
-  
+
   return {
-    hours: hourlyData
+    hours: hourlyData,
   };
 };
 
 const convertDailyForecast = (data: ForecastResponse, isDarkMode: boolean = false): DailyForecastType => {
   return {
-    days: data.forecastDays.map(day => {
+    days: data.forecastDays.map((day) => {
       // 获取白天天气类型
       const dayWeatherType = extractWeatherType(day.daytimeForecast.weatherCondition);
-      
+
       return {
         date: `${day.displayDate.year}-${day.displayDate.month}-${day.displayDate.day}`,
         sunrise: day.sunEvents.sunriseTime,
@@ -310,7 +307,7 @@ const convertDailyForecast = (data: ForecastResponse, isDarkMode: boolean = fals
 
 const convertHourlyHistory = (data: HourlyHistoryResponse, isDarkMode: boolean = false): HourlyHistoryType => {
   return {
-    hours: data.historyHours.map(hour => {
+    hours: data.historyHours.map((hour) => {
       return {
         time: hour.interval.startTime,
         weatherData: {
@@ -376,7 +373,7 @@ const convertHourlyHistory = (data: HourlyHistoryResponse, isDarkMode: boolean =
 enum ThemeMode {
   AUTO = 'auto',
   LIGHT = 'light',
-  DARK = 'dark'
+  DARK = 'dark',
 }
 
 export default function Home() {
@@ -387,31 +384,31 @@ export default function Home() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [isMounted, setIsMounted] = useState<boolean>(false);
   const [themeMenuOpen, setThemeMenuOpen] = useState<boolean>(false);
-  
+
   const [currentWeather, setCurrentWeather] = useState<CurrentWeatherType | null>(null);
   const [hourlyForecast, setHourlyForecast] = useState<HourlyForecastType | null>(null);
   const [dailyForecast, setDailyForecast] = useState<DailyForecastType | null>(null);
   const [hourlyHistory, setHourlyHistory] = useState<HourlyHistoryType | null>(null);
   const [apiError, setApiError] = useState<Error | ApiError | null>(null);
-  
+
   // 添加组件加载状态
   const [componentsLoaded, setComponentsLoaded] = useState<boolean>(false);
-  
+
   const themeMenuRef = React.useRef<HTMLDivElement>(null);
   const themeButtonRef = React.useRef<HTMLButtonElement>(null);
-  
+
   const [headerShadow, setHeaderShadow] = useState<boolean>(false);
-  
+
   const [searchTerms, setSearchTerms] = useState<string[]>([]);
-  
+
   // 添加位置错误状态
   const [locationError, setLocationError] = useState<boolean>(false);
   const [locationPermissionDenied, setLocationPermissionDenied] = useState<boolean>(false);
   const [locationAttempted, setLocationAttempted] = useState<boolean>(false);
-  
+
   useEffect(() => {
     setIsMounted(true);
-    
+
     // 从localStorage恢复主题设置
     if (typeof window !== 'undefined') {
       const savedThemeMode = localStorage.getItem('themeMode');
@@ -425,7 +422,7 @@ export default function Home() {
           console.error('无法解析保存的主题模式:', e);
         }
       }
-      
+
       // 恢复保存的搜索记录
       const savedSearchTerms = localStorage.getItem('searchTerms');
       if (savedSearchTerms) {
@@ -439,76 +436,88 @@ export default function Home() {
   }, []);
 
   // 获取天气数据的函数
-  const fetchWeatherData = useCallback(async (lat: number, lng: number) => {
-    setLoading(true);
-    setApiError(null);
-    
-    try {
-      // 获取当前天气数据
-      const currentData = await getCurrentWeather(lat, lng);
-      setCurrentWeather(convertCurrentWeather(currentData, isDarkMode));
-      
-      // 更新最近搜索的位置
-      if (location?.address) {
-        // 创建新的搜索词数组而不依赖当前的 searchTerms 状态
-        const currentTerms = localStorage.getItem('searchTerms') ? 
-          JSON.parse(localStorage.getItem('searchTerms') || '[]') : [];
-        const updatedTerms = [location.address, ...currentTerms.filter((term: string) => term !== location.address)].slice(0, 5);
-        setSearchTerms(updatedTerms);
-        localStorage.setItem('searchTerms', JSON.stringify(updatedTerms));
+  const fetchWeatherData = useCallback(
+    async (lat: number, lng: number) => {
+      setLoading(true);
+      setApiError(null);
+
+      try {
+        // 获取当前天气数据
+        const currentData = await getCurrentWeather(lat, lng);
+        setCurrentWeather(convertCurrentWeather(currentData, isDarkMode));
+
+        // 更新最近搜索的位置
+        if (location?.address) {
+          // 创建新的搜索词数组而不依赖当前的 searchTerms 状态
+          const currentTerms = localStorage.getItem('searchTerms')
+            ? JSON.parse(localStorage.getItem('searchTerms') || '[]')
+            : [];
+          const updatedTerms = [
+            location.address,
+            ...currentTerms.filter((term: string) => term !== location.address),
+          ].slice(0, 5);
+          setSearchTerms(updatedTerms);
+          localStorage.setItem('searchTerms', JSON.stringify(updatedTerms));
+        }
+      } catch (error) {
+        console.error('获取当前天气失败:', error);
+        handleApiError(error);
+        setCurrentWeather(null);
       }
-    } catch (error) {
-      console.error('获取当前天气失败:', error);
-      handleApiError(error);
-      setCurrentWeather(null);
-    }
-    
-    try {
-      // 获取每小时预报
-      const hourlyData = await getHourlyForecast(lat, lng);
-      console.log('每小时预报数据:', hourlyData);
-      if (!hourlyData || !hourlyData.forecastHours || !Array.isArray(hourlyData.forecastHours) || hourlyData.forecastHours.length === 0) {
-        console.error('每小时预报数据格式不正确:', hourlyData);
+
+      try {
+        // 获取每小时预报
+        const hourlyData = await getHourlyForecast(lat, lng);
+        console.log('每小时预报数据:', hourlyData);
+        if (
+          !hourlyData ||
+          !hourlyData.forecastHours ||
+          !Array.isArray(hourlyData.forecastHours) ||
+          hourlyData.forecastHours.length === 0
+        ) {
+          console.error('每小时预报数据格式不正确:', hourlyData);
+          setHourlyForecast({ hours: [] });
+        } else {
+          setHourlyForecast(convertHourlyForecast(hourlyData, isDarkMode));
+        }
+      } catch (error) {
+        console.error('获取每小时预报失败:', error);
+        if (!apiError) handleApiError(error);
         setHourlyForecast({ hours: [] });
-      } else {
-        setHourlyForecast(convertHourlyForecast(hourlyData, isDarkMode));
       }
-    } catch (error) {
-      console.error('获取每小时预报失败:', error);
-      if (!apiError) handleApiError(error);
-      setHourlyForecast({ hours: [] });
-    }
-    
-    try {
-      // 获取每日预报
-      const dailyData = await getDailyForecast(lat, lng);
-      setDailyForecast(convertDailyForecast(dailyData, isDarkMode));
-    } catch (error) {
-      console.error('获取每日预报失败:', error);
-      if (!apiError) handleApiError(error);
-      setDailyForecast(null);
-    }
-    
-    try {
-      // 获取历史数据
-      const historyData = await getHourlyHistory(lat, lng);
-      setHourlyHistory(convertHourlyHistory(historyData, isDarkMode));
-    } catch (error) {
-      console.error('获取历史数据失败:', error);
-      if (!apiError) handleApiError(error);
-      setHourlyHistory(null);
-    }
-    
-    setLoading(false);
-  }, [apiError, isDarkMode, location]);
-  
+
+      try {
+        // 获取每日预报
+        const dailyData = await getDailyForecast(lat, lng);
+        setDailyForecast(convertDailyForecast(dailyData, isDarkMode));
+      } catch (error) {
+        console.error('获取每日预报失败:', error);
+        if (!apiError) handleApiError(error);
+        setDailyForecast(null);
+      }
+
+      try {
+        // 获取历史数据
+        const historyData = await getHourlyHistory(lat, lng);
+        setHourlyHistory(convertHourlyHistory(historyData, isDarkMode));
+      } catch (error) {
+        console.error('获取历史数据失败:', error);
+        if (!apiError) handleApiError(error);
+        setHourlyHistory(null);
+      }
+
+      setLoading(false);
+    },
+    [apiError, isDarkMode, location]
+  );
+
   // 获取用户地理位置并初始化数据
   useEffect(() => {
     if (!isMounted) return;
-    
+
     // 如果已经尝试过获取位置，不要重复
     if (locationAttempted) return;
-    
+
     // 标记已尝试获取位置
     setLocationAttempted(true);
 
@@ -528,33 +537,33 @@ export default function Home() {
     // 获取用户当前位置
     if (navigator.geolocation) {
       setLoading(true);
-      
+
       try {
         navigator.geolocation.getCurrentPosition(
           async (position) => {
             try {
               const lat = position.coords.latitude;
               const lng = position.coords.longitude;
-              
+
               // 尝试获取位置名称
               try {
                 // 使用后端API进行反向地理编码
                 const response = await fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`);
                 const data = await response.json();
-                
+
                 if (data.error) {
                   throw new Error(data.error);
                 }
-                
+
                 const locationData: LocationData = {
                   lat,
                   lng,
-                  address: data.address || `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+                  address: data.address || `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
                 };
-                
+
                 // 保存位置到本地存储
                 localStorage.setItem('lastLocation', JSON.stringify(locationData));
-                
+
                 setLocation(locationData);
               } catch (error) {
                 console.error('获取位置名称失败:', error);
@@ -562,7 +571,7 @@ export default function Home() {
                 const locationData: LocationData = {
                   lat,
                   lng,
-                  address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+                  address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
                 };
                 localStorage.setItem('lastLocation', JSON.stringify(locationData));
                 setLocation(locationData);
@@ -576,7 +585,7 @@ export default function Home() {
           (error) => {
             console.error('获取位置失败:', error);
             setLoading(false);
-            
+
             // 处理特定的地理位置错误
             if (error.code === 1) {
               // 用户拒绝了授权
@@ -589,7 +598,7 @@ export default function Home() {
           {
             enableHighAccuracy: true,
             timeout: 10000,
-            maximumAge: 60000
+            maximumAge: 60000,
           }
         );
       } catch (error) {
@@ -610,36 +619,36 @@ export default function Home() {
       fetchWeatherData(location.lat, location.lng);
     }
   }, [location, isMounted, fetchWeatherData]);
-  
+
   // 将主题设置保存到本地存储
   useEffect(() => {
     if (isMounted && typeof window !== 'undefined') {
       localStorage.setItem('themeMode', themeMode);
     }
   }, [themeMode, isMounted]);
-  
+
   // 在组件挂载时检查系统主题并监听系统主题变化
   useEffect(() => {
     if (typeof window !== 'undefined' && window.matchMedia) {
       const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      
+
       // 如果是自动模式，则使用系统主题
       if (themeMode === ThemeMode.AUTO) {
         setIsDarkMode(darkModeMediaQuery.matches);
       }
-      
+
       // 监听系统主题变化
       const handleChange = (e: MediaQueryListEvent) => {
         if (themeMode === ThemeMode.AUTO) {
           setIsDarkMode(e.matches);
         }
       };
-      
+
       darkModeMediaQuery.addEventListener('change', handleChange);
       return () => darkModeMediaQuery.removeEventListener('change', handleChange);
     }
   }, [themeMode]);
-  
+
   // 根据themeMode状态更新isDarkMode
   useEffect(() => {
     if (themeMode === ThemeMode.LIGHT) {
@@ -649,83 +658,83 @@ export default function Home() {
     }
     // 如果是AUTO，已在系统主题检测中处理
   }, [themeMode]);
-  
+
   // 应用当前主题到文档
   useEffect(() => {
     if (!isMounted) return;
-    
+
     if (typeof document !== 'undefined') {
       document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
-      
+
       // 如果已经有天气数据，更新所有数据以刷新图标
       if (location) {
         // 仅在已经加载了数据的情况下更新图标，避免不必要的API调用
         if (currentWeather) {
-          setCurrentWeather(prevData => {
+          setCurrentWeather((prevData) => {
             if (!prevData) return null;
             return {
               ...prevData,
               weatherCondition: {
                 ...prevData.weatherCondition,
-                icon: generateIconUrl(prevData.weatherCondition.icon, isDarkMode)
-              }
+                icon: generateIconUrl(prevData.weatherCondition.icon, isDarkMode),
+              },
             };
           });
         }
-        
+
         if (hourlyForecast && hourlyForecast.hours.length > 0) {
-          setHourlyForecast(prevData => {
+          setHourlyForecast((prevData) => {
             if (!prevData || !prevData.hours.length) return { hours: [] };
             return {
-              hours: prevData.hours.map(hour => ({
+              hours: prevData.hours.map((hour) => ({
                 ...hour,
                 weatherCondition: {
                   ...hour.weatherCondition,
-                  icon: generateIconUrl(hour.weatherCondition.icon, isDarkMode)
-                }
-              }))
+                  icon: generateIconUrl(hour.weatherCondition.icon, isDarkMode),
+                },
+              })),
             };
           });
         }
-        
+
         if (dailyForecast && dailyForecast.days.length > 0) {
-          setDailyForecast(prevData => {
+          setDailyForecast((prevData) => {
             if (!prevData || !prevData.days.length) return null;
             return {
-              days: prevData.days.map(day => ({
+              days: prevData.days.map((day) => ({
                 ...day,
                 weatherCondition: {
                   ...day.weatherCondition,
-                  icon: generateIconUrl(day.weatherCondition.icon, isDarkMode)
-                }
-              }))
+                  icon: generateIconUrl(day.weatherCondition.icon, isDarkMode),
+                },
+              })),
             };
           });
         }
-        
+
         if (hourlyHistory && hourlyHistory.hours.length > 0) {
-          setHourlyHistory(prevData => {
+          setHourlyHistory((prevData) => {
             if (!prevData || !prevData.hours.length) return null;
             return {
-              hours: prevData.hours.map(hour => ({
+              hours: prevData.hours.map((hour) => ({
                 ...hour,
                 weatherCondition: {
                   ...hour.weatherCondition,
-                  icon: generateIconUrl(hour.weatherCondition.icon, isDarkMode)
-                }
-              }))
+                  icon: generateIconUrl(hour.weatherCondition.icon, isDarkMode),
+                },
+              })),
             };
           });
         }
       }
     }
   }, [isDarkMode, isMounted]);
-  
+
   // 点击外部关闭下拉菜单
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        themeMenuRef.current && 
+        themeMenuRef.current &&
         themeButtonRef.current &&
         !themeMenuRef.current.contains(event.target as Node) &&
         !themeButtonRef.current.contains(event.target as Node)
@@ -733,24 +742,24 @@ export default function Home() {
         setThemeMenuOpen(false);
       }
     };
-    
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-  
+
   // 处理主题菜单切换
   const toggleThemeMenu = () => {
     setThemeMenuOpen(!themeMenuOpen);
   };
-  
+
   // 处理主题选择
   const handleThemeSelect = (mode: ThemeMode) => {
     setThemeMode(mode);
     setThemeMenuOpen(false);
   };
-  
+
   // 处理标签切换，添加防抖
   const handleTabChange = useCallback((tab: string) => {
     // 通过 setTimeout 确保组件加载和卸载的时序正确
@@ -758,11 +767,11 @@ export default function Home() {
       setActiveTab(tab);
     }, 0);
   }, []);
-  
+
   // 处理和分类错误
   const handleApiError = (error: unknown): void => {
     console.error('API错误:', error);
-    
+
     // 设置错误对象
     if (error instanceof ApiError || error instanceof Error) {
       setApiError(error);
@@ -771,15 +780,15 @@ export default function Home() {
       setApiError(new Error('获取数据时发生未知错误，请稍后再试'));
     }
   };
-  
+
   const handleLocationChange = async (newLocation: LocationData) => {
     // 如果已经在加载中，不要重复处理
     if (loading) return;
-    
+
     // 明确设置loading状态为true
     setLoading(true);
     setLocation(newLocation);
-    
+
     try {
       await fetchWeatherData(newLocation.lat, newLocation.lng);
     } catch (error) {
@@ -798,7 +807,7 @@ export default function Home() {
       fetchWeatherData(location.lat, location.lng);
     }
   };
-  
+
   // 监听滚动，添加header阴影
   useEffect(() => {
     const handleScroll = () => {
@@ -808,11 +817,11 @@ export default function Home() {
         setHeaderShadow(false);
       }
     };
-    
+
     window.addEventListener('scroll', handleScroll);
     // 初始调用一次确保初始状态正确
     handleScroll();
-    
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
@@ -830,25 +839,25 @@ export default function Home() {
       setComponentsLoaded(false);
     };
   }, [isMounted]);
-  
+
   // 用于安全渲染的函数
   const safeRender = (component: React.ReactNode): React.ReactNode => {
     if (!isMounted || !componentsLoaded) {
       return (
-        <div className="animate-pulse p-4">
-          <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
-          <div className="h-40 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-          <div className="h-40 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        <div className="p-4 animate-pulse">
+          <div className="rounded bg-gray-200 h-16 mb-4 dark:bg-gray-700"></div>
+          <div className="rounded bg-gray-200 h-40 mb-2 dark:bg-gray-700"></div>
+          <div className="rounded bg-gray-200 h-40 dark:bg-gray-700"></div>
         </div>
       );
     }
-    
+
     return component;
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header 
+      <header
         className={`fixed-header ${headerShadow ? 'fixed-header-shadow' : ''} px-4 py-3 sm:p-4 text-white w-full`}
         style={{
           background: `linear-gradient(to right, var(--header-bg-from), var(--header-bg-to))`,
@@ -856,142 +865,204 @@ export default function Home() {
       >
         <div className="container flex flex-col mx-auto justify-between items-center sm:flex-row">
           <div className="flex mb-2 items-center sm:mb-0">
-            <svg className="h-6 mr-2 w-6 sm:h-8 sm:w-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 3V4M12 20V21M4 12H3M21 12H20M6.3 6.3L5.5 5.5M18.7 6.3L19.5 5.5M17.7 17.7L18.5 18.5M6.3 17.7L5.5 18.5M16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8C14.2091 8 16 9.79086 16 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg
+              className="h-6 mr-2 w-6 sm:h-8 sm:w-8"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M12 3V4M12 20V21M4 12H3M21 12H20M6.3 6.3L5.5 5.5M18.7 6.3L19.5 5.5M17.7 17.7L18.5 18.5M6.3 17.7L5.5 18.5M16 12C16 14.2091 14.2091 16 12 16C9.79086 16 8 14.2091 8 12C8 9.79086 9.79086 8 12 8C14.2091 8 16 9.79086 16 12Z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
             <h1 className="font-normal text-xl sm:text-2xl">Google 天气</h1>
           </div>
-          
+
           <div className="flex-row text-center text-xs text-white/80 hidden items-center sm:flex sm:text-sm">
-            <Image 
-              src="/mci_logo.png" 
-              alt="Master Concept Logo" 
-              width={64} 
-              height={64} 
-              className="mr-3" 
-            />
+            <Image src="/mci_logo.png" alt="Master Concept Logo" width={64} height={64} className="mr-3" />
             <p>由 Master Concept 开发，演示 Google Maps Platform Weather API</p>
           </div>
-          
+
           <div className="flex items-center">
             {isMounted && (
               <div className="flex items-center relative">
-                <button 
+                <button
                   ref={themeButtonRef}
                   onClick={toggleThemeMenu}
                   className="dark-mode-toggle relative"
                   aria-label="切换主题选项"
-                  title={themeMode === ThemeMode.AUTO 
-                    ? "跟随系统" 
-                    : themeMode === ThemeMode.LIGHT 
-                      ? "亮色模式" 
-                      : "暗色模式"
+                  title={
+                    themeMode === ThemeMode.AUTO ? '跟随系统' : themeMode === ThemeMode.LIGHT ? '亮色模式' : '暗色模式'
                   }
                 >
                   {themeMode === ThemeMode.AUTO ? (
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
+                      />
                     </svg>
                   ) : isDarkMode ? (
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                      />
                     </svg>
                   ) : (
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                      />
                     </svg>
                   )}
-                  <div 
-                    className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full flex items-center justify-center transition-transform duration-200 ${themeMenuOpen ? 'transform rotate-180' : ''}`}
-                    style={{ 
+                  <div
+                    className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full flex items-center justify-center transition-transform duration-200 ${
+                      themeMenuOpen ? 'transform rotate-180' : ''
+                    }`}
+                    style={{
                       backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(66, 133, 244, 0.2)',
                     }}
                   >
-                    <svg 
+                    <svg
                       className="h-2 w-2"
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24" 
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                       xmlns="http://www.w3.org/2000/svg"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
                 </button>
-                
+
                 {/* 主题选择下拉菜单 */}
-                <div 
+                <div
                   ref={themeMenuRef}
                   className={`absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-10 transition-all duration-200 transform ${
-                    themeMenuOpen 
-                      ? 'opacity-100 translate-y-0' 
-                      : 'opacity-0 translate-y-[-10px] invisible'
+                    themeMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-[-10px] invisible'
                   }`}
                   style={{ background: 'var(--card-background)' }}
                 >
                   {/* 添加小三角形指示器 */}
-                  <div 
+                  <div
                     className="h-4 transform -top-2 right-4 w-4 rotate-45 absolute"
                     style={{ background: 'var(--card-background)' }}
                   ></div>
-                  
+
                   <div className="py-1 relative" role="menu" aria-orientation="vertical">
                     <button
                       className={`w-full text-left px-4 py-2 text-sm ${
-                        themeMode === ThemeMode.AUTO 
-                          ? 'font-medium' 
-                          : ''
+                        themeMode === ThemeMode.AUTO ? 'font-medium' : ''
                       } hover:bg-opacity-10 transition-colors duration-150`}
                       role="menuitem"
                       onClick={() => handleThemeSelect(ThemeMode.AUTO)}
-                      style={{ 
+                      style={{
                         backgroundColor: themeMode === ThemeMode.AUTO ? 'var(--tab-active)' : 'transparent',
-                        color: themeMode === ThemeMode.AUTO ? '#ffffff' : 'var(--foreground)'
+                        color: themeMode === ThemeMode.AUTO ? '#ffffff' : 'var(--foreground)',
                       }}
                     >
                       <div className="flex items-center">
-                        <svg className="h-4 mr-3 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                        <svg
+                          className="h-4 mr-3 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
+                          />
                         </svg>
                         跟随系统
                       </div>
                     </button>
                     <button
                       className={`w-full text-left px-4 py-2 text-sm ${
-                        themeMode === ThemeMode.LIGHT 
-                          ? 'font-medium' 
-                          : ''
+                        themeMode === ThemeMode.LIGHT ? 'font-medium' : ''
                       } hover:bg-opacity-10 transition-colors duration-150`}
                       role="menuitem"
                       onClick={() => handleThemeSelect(ThemeMode.LIGHT)}
-                      style={{ 
+                      style={{
                         backgroundColor: themeMode === ThemeMode.LIGHT ? 'var(--tab-active)' : 'transparent',
-                        color: themeMode === ThemeMode.LIGHT ? '#ffffff' : 'var(--foreground)'
+                        color: themeMode === ThemeMode.LIGHT ? '#ffffff' : 'var(--foreground)',
                       }}
                     >
                       <div className="flex items-center">
-                        <svg className="h-4 mr-3 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        <svg
+                          className="h-4 mr-3 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                          />
                         </svg>
                         亮色模式
                       </div>
                     </button>
                     <button
                       className={`w-full text-left px-4 py-2 text-sm ${
-                        themeMode === ThemeMode.DARK 
-                          ? 'font-medium' 
-                          : ''
+                        themeMode === ThemeMode.DARK ? 'font-medium' : ''
                       } hover:bg-opacity-10 transition-colors duration-150`}
                       role="menuitem"
                       onClick={() => handleThemeSelect(ThemeMode.DARK)}
-                      style={{ 
+                      style={{
                         backgroundColor: themeMode === ThemeMode.DARK ? 'var(--tab-active)' : 'transparent',
-                        color: themeMode === ThemeMode.DARK ? '#ffffff' : 'var(--foreground)'
+                        color: themeMode === ThemeMode.DARK ? '#ffffff' : 'var(--foreground)',
                       }}
                     >
                       <div className="flex items-center">
-                        <svg className="h-4 mr-3 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        <svg
+                          className="h-4 mr-3 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                          />
                         </svg>
                         暗色模式
                       </div>
@@ -1003,29 +1074,51 @@ export default function Home() {
           </div>
         </div>
       </header>
-      
+
       {/* 为fixed header添加占位元素 */}
       <div className="h-[80px] sm:h-[72px]"></div>
-      
+
       <main style={{ background: 'var(--main-bg)' }}>
         <div className="container mx-auto py-3 px-4 sm:p-4">
           {/* 位置权限错误提示 */}
           {locationPermissionDenied && !location && (
             <div className="border rounded-lg bg-yellow-100 border-yellow-200 mb-4 p-3 text-yellow-800 dark:bg-yellow-800/30 dark:border-yellow-700 dark:text-yellow-200">
               <div className="flex items-center">
-                <svg className="flex-shrink-0 h-5 mr-2 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                <svg
+                  className="flex-shrink-0 h-5 mr-2 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
                 </svg>
                 <span>定位权限已拒绝，请手动搜索位置获取天气数据。</span>
               </div>
             </div>
           )}
-          
+
           {locationError && !location && !locationPermissionDenied && (
             <div className="border rounded-lg bg-red-100 border-red-200 mb-4 p-3 text-red-800 dark:bg-red-800/30 dark:border-red-700 dark:text-red-200">
               <div className="flex items-center">
-                <svg className="flex-shrink-0 h-5 mr-2 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  className="flex-shrink-0 h-5 mr-2 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
                 <span>获取位置信息失败，请手动搜索位置获取天气数据。</span>
               </div>
@@ -1033,19 +1126,15 @@ export default function Home() {
           )}
 
           <div className="mx-auto mb-6 w-full">
-            <LocationSearch 
-              onLocationChange={handleLocationChange} 
-              recentSearches={searchTerms} 
-              isLoading={loading}
-            />
+            <LocationSearch onLocationChange={handleLocationChange} recentSearches={searchTerms} isLoading={loading} />
           </div>
-        
+
           {apiError && (
             <div className="mb-6">
               <ErrorDisplay error={apiError} onRetry={handleRetry} />
             </div>
           )}
-          
+
           <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
             <div className="order-2 lg:order-1 lg:col-span-1">
               {isMounted && (
@@ -1053,7 +1142,7 @@ export default function Home() {
                   <WeatherMap location={location} />
                 </div>
               )}
-              
+
               <div className="mt-6">
                 {location && (
                   <h2 className="font-normal text-lg mb-2 text-google-gray-800 break-words sm:text-xl">
@@ -1063,22 +1152,17 @@ export default function Home() {
                 {safeRender(<CurrentWeather data={currentWeather} isLoading={loading} />)}
               </div>
             </div>
-            
+
             <div className="order-1 mb-4 lg:order-2 lg:mb-0 lg:col-span-2">
-              <div 
-                className="rounded-lg shadow-sm p-3 sm:p-4" 
-                style={{ background: 'var(--card-background)' }}
-              >
+              <div className="rounded-lg shadow-sm p-3 sm:p-4" style={{ background: 'var(--card-background)' }}>
                 <div className="flex -mx-2 px-2 pb-2 overflow-x-auto">
                   <button
                     className={`py-2 px-3 sm:px-4 font-medium whitespace-nowrap flex-shrink-0 ${
-                      activeTab === 'hourly' 
-                        ? 'border-b-2' 
-                        : ''
+                      activeTab === 'hourly' ? 'border-b-2' : ''
                     }`}
-                    style={{ 
+                    style={{
                       color: activeTab === 'hourly' ? 'var(--tab-active)' : 'var(--tab-inactive)',
-                      borderColor: activeTab === 'hourly' ? 'var(--tab-border)' : 'transparent' 
+                      borderColor: activeTab === 'hourly' ? 'var(--tab-border)' : 'transparent',
                     }}
                     onClick={() => handleTabChange('hourly')}
                   >
@@ -1086,13 +1170,11 @@ export default function Home() {
                   </button>
                   <button
                     className={`py-2 px-3 sm:px-4 font-medium whitespace-nowrap flex-shrink-0 ${
-                      activeTab === 'daily' 
-                        ? 'border-b-2' 
-                        : ''
+                      activeTab === 'daily' ? 'border-b-2' : ''
                     }`}
-                    style={{ 
+                    style={{
                       color: activeTab === 'daily' ? 'var(--tab-active)' : 'var(--tab-inactive)',
-                      borderColor: activeTab === 'daily' ? 'var(--tab-border)' : 'transparent' 
+                      borderColor: activeTab === 'daily' ? 'var(--tab-border)' : 'transparent',
                     }}
                     onClick={() => handleTabChange('daily')}
                   >
@@ -1100,26 +1182,26 @@ export default function Home() {
                   </button>
                   <button
                     className={`py-2 px-3 sm:px-4 font-medium whitespace-nowrap flex-shrink-0 ${
-                      activeTab === 'history' 
-                        ? 'border-b-2' 
-                        : ''
+                      activeTab === 'history' ? 'border-b-2' : ''
                     }`}
-                    style={{ 
+                    style={{
                       color: activeTab === 'history' ? 'var(--tab-active)' : 'var(--tab-inactive)',
-                      borderColor: activeTab === 'history' ? 'var(--tab-border)' : 'transparent' 
+                      borderColor: activeTab === 'history' ? 'var(--tab-border)' : 'transparent',
                     }}
                     onClick={() => handleTabChange('history')}
                   >
                     历史记录
                   </button>
                 </div>
-                
+
                 <div className="mt-4">
                   {isMounted && (
                     <>
-                      {activeTab === 'hourly' && safeRender(<HourlyForecast data={hourlyForecast} isLoading={loading} />)}
+                      {activeTab === 'hourly' &&
+                        safeRender(<HourlyForecast data={hourlyForecast} isLoading={loading} />)}
                       {activeTab === 'daily' && safeRender(<DailyForecast data={dailyForecast} isLoading={loading} />)}
-                      {activeTab === 'history' && safeRender(<HourlyHistory data={hourlyHistory} isLoading={loading} />)}
+                      {activeTab === 'history' &&
+                        safeRender(<HourlyHistory data={hourlyHistory} isLoading={loading} />)}
                     </>
                   )}
                 </div>
@@ -1128,45 +1210,25 @@ export default function Home() {
           </div>
         </div>
       </main>
-      
+
       <div className="footer-spacer"></div>
-      
-      <footer 
-        className="text-white w-full p-4 fixed-footer"
-        style={{ background: 'var(--footer-bg)' }}
-      >
+
+      <footer className="flex h-20 text-white w-full p-4 fixed-footer items-center" style={{ background: 'var(--footer-bg)' }}>
         <div className="container mx-auto">
           <div className="flex flex-col justify-between items-center md:flex-row">
             <div className="mb-4 md:mb-0">
               <div className="flex mb-2 items-center">
-                <Image 
-                  src="/mci_logo.png" 
-                  alt="Master Concept Logo" 
-                  width={56} 
-                  height={56} 
-                  className="mr-3" 
-                />
+                <Image src="/mci_logo.png" alt="Master Concept Logo" width={56} height={56} className="mr-3" />
                 <h3 className="font-normal text-lg">Google 天气</h3>
               </div>
-              <p style={{ color: 'var(--footer-text-muted)' }}>
-                基于 Google Maps Platform Weather API 的全球天气信息服务
-              </p>
-              <p style={{ color: 'var(--footer-text-muted)', marginTop: '0.5rem' }}>
-                由 Master Concept 开发 | 官网: <a href="https://masterconcept.ai" className="transition-colors underline hover:text-white" target="_blank" rel="noopener noreferrer">masterconcept.ai</a>
-              </p>
-              <p style={{ color: 'var(--footer-text-muted)', marginTop: '0.25rem' }}>
-                对 Weather API 感兴趣？欢迎联系: <a href="mailto:eddie.shao@masterconcept.ai" className="transition-colors underline hover:text-white">eddie.shao@masterconcept.ai</a>
-              </p>
             </div>
             <div className="flex flex-col items-end">
-              <Image 
-                src="/mci_logo.png" 
-                alt="Master Concept Logo" 
-                width={80} 
-                height={80} 
-                className="mb-2 hidden md:block" 
-              />
-              <p style={{ color: 'var(--footer-text-muted)' }}>© {new Date().getFullYear()} Google Weather</p>
+              <p style={{ color: 'var(--footer-text-muted)', marginTop: '0.25rem' }}>
+                对 Weather API 感兴趣？欢迎联系:{' '}
+                <a href="mailto:eddie.shao@masterconcept.ai" className="transition-colors underline hover:text-white">
+                  eddie.shao@masterconcept.ai
+                </a>
+              </p>
             </div>
           </div>
         </div>
