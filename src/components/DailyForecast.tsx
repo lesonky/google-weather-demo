@@ -101,35 +101,45 @@ const DailyForecast: React.FC<DailyForecastProps> = ({ data, isLoading }) => {
           
           return (
             <div key={index} className="py-5 first:pt-2 last:pb-2">
-              <div className="flex mb-3 items-center justify-between">
-                <div className="flex space-x-3 flex-1 items-center">
-                  <div className="flex flex-col min-w-[80px]">
-                    <span className="font-medium text-lg">{formatDate(day.date)}</span>
+              {/* Main flex container: stack vertically on small screens, row on sm+ */}
+              <div className="flex flex-col mb-3 sm:flex-row sm:items-center sm:justify-between">
+                {/* Left side: Date, Icon, Weather Text */}
+                {/* On small screens, justify-between pushes Date and Weather Icon/Text apart */}
+                <div className="flex mb-2 w-full justify-between items-center sm:flex-row sm:space-x-3 sm:mb-0 sm:w-auto sm:items-center sm:justify-start">
+                  {/* Date */}
+                  <div className="flex flex-col min-w-[70px] sm:min-w-[80px]">
+                    <span className="font-medium text-base sm:text-lg">{formatDate(day.date)}</span>
                     {index === 0 && <span className="mt-0.5 text-xs text-blue-500">今天</span>}
                   </div>
+                  {/* Icon & Text */}
                   {day.weatherCondition && (
-                    <div className="flex space-x-2 items-center">
-                      <Image 
-                        src={day.weatherCondition.icon} 
-                        alt={day.weatherCondition.text} 
-                        className="h-10 w-10"
-                        width={40}
-                        height={40}
-                      />
+                    <div className="flex space-x-1 items-center sm:space-x-2">
                       <span 
-                        className="text-sm"
+                        className="order-2 text-xs sm:order-1 sm:text-sm" // Move text before icon on small screens if needed, or adjust spacing
                         style={{ color: weatherType ? getWeatherTypeColor(weatherType) : 'inherit' }}
                       >
                         {day.weatherCondition.typeText || day.weatherCondition.text}
                       </span>
+                      <Image 
+                        src={day.weatherCondition.icon} 
+                        alt={day.weatherCondition.text} 
+                        className="order-1 h-8 w-8 sm:order-2 sm:h-10 sm:w-10" // Icon first
+                        width={40}
+                        height={40}
+                      />
                     </div>
                   )}
                 </div>
                 
-                <div className="flex flex-col text-right ml-2 items-end">
-                  <div className="flex space-x-2 items-center">
-                    <span className="text-base text-blue-500">{formatTemperature(day.temperatureLow.value, day.temperatureLow.unit)}</span>
-                    <div className="rounded-full bg-gray-200 h-2 w-20 relative dark:bg-gray-700">
+                {/* Right side: Temperature Bar */}
+                {/* Align items start on small screens, end on sm+ */}
+                <div className="flex flex-col w-full items-start sm:ml-2 sm:w-auto sm:items-end">
+                  {/* Temp Bar and Values */}
+                  {/* Justify end on small screens to align right */}
+                  <div className="flex space-x-1 w-full items-center justify-end sm:space-x-2">
+                    <span className="text-sm text-blue-500 sm:text-base">{formatTemperature(day.temperatureLow.value, day.temperatureLow.unit)}</span>
+                    {/* Responsive width for temp bar */}
+                    <div className="rounded-full bg-gray-200 h-2 w-16 relative sm:w-20 dark:bg-gray-700">
                       <div 
                         className="bg-gradient-to-r rounded-full from-blue-500 to-red-500 h-2 absolute"
                         style={{ 
@@ -138,9 +148,10 @@ const DailyForecast: React.FC<DailyForecastProps> = ({ data, isLoading }) => {
                         }}
                       ></div>
                     </div>
-                    <span className="font-medium text-lg text-red-500">{formatTemperature(day.temperatureHigh.value, day.temperatureHigh.unit)}</span>
+                    <span className="font-medium text-base text-red-500 sm:text-lg">{formatTemperature(day.temperatureHigh.value, day.temperatureHigh.unit)}</span>
                   </div>
-                  <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  {/* Label aligned right */}
+                  <div className="mt-0.5 text-xs text-right w-full text-gray-500 dark:text-gray-400">
                     最低温/最高温
                   </div>
                 </div>
