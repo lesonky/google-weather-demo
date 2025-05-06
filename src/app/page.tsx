@@ -728,6 +728,7 @@ export default function Home() {
         }
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDarkMode, isMounted]);
 
   // 点击外部关闭下拉菜单
@@ -1213,17 +1214,17 @@ export default function Home() {
 
       <div className="footer-spacer"></div>
 
-      <footer className="flex h-20 text-white w-full p-4 fixed-footer items-center" style={{ background: 'var(--footer-bg)' }}>
+      <footer className="flex text-white min-h-20 w-full p-4 fixed-footer items-center" style={{ background: 'var(--footer-bg)' }}>
         <div className="container mx-auto">
           <div className="flex flex-col justify-between items-center md:flex-row">
-            <div className="mb-4 md:mb-0">
-              <div className="flex mb-2 items-center">
+            <div className="text-center mb-4 md:text-left md:mb-0">
+              <div className="flex mb-2 items-center justify-center md:justify-start">
                 <Image src="/mci_logo.png" alt="Master Concept Logo" width={56} height={56} className="mr-3" />
                 <h3 className="font-normal text-lg">Google 天气</h3>
               </div>
             </div>
-            <div className="flex flex-col items-end">
-              <p style={{ color: 'var(--footer-text-muted)', marginTop: '0.25rem' }}>
+            <div className="flex flex-col text-center items-center md:text-right md:items-end">
+              <p className="text-sm" style={{ color: 'var(--footer-text-muted)' }}>
                 对 Weather API 感兴趣？欢迎联系:{' '}
                 <a href="mailto:eddie.shao@masterconcept.ai" className="transition-colors underline hover:text-white">
                   eddie.shao@masterconcept.ai
